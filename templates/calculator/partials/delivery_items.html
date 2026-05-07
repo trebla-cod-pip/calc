@@ -1,0 +1,87 @@
+{% load humanize l10n %}
+<div id="delivery-items-area">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
+        <th class="px-4 py-3">Позиция</th>
+        <th class="px-4 py-3 text-center">Кол-во</th>
+        <th class="px-4 py-3">КП / Поставщик</th>
+        <th class="px-4 py-3 text-right">Цена/шт.</th>
+        <th class="px-4 py-3 text-right">Сумма</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for item in items %}
+      <tr class="hover:bg-gray-50 transition-colors {% if not item.active_offer %}bg-red-50{% endif %}">
+        <td class="px-4 py-3">
+          <div class="font-medium text-gray-800">
+            {{ item.requirement.short_name|default:item.requirement.name }}
+          </div>
+          {% if item.requirement.short_name %}
+          <div class="text-xs text-gray-400">{{ item.requirement.name }}</div>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-center tabular-nums text-gray-700">
+          {{ item.requirement.quantity }} {{ item.requirement.unit }}
+        </td>
+        <td class="px-4 py-3">
+          {% if item.requirement.offers.count > 0 %}
+          <select name="offer_pk"
+                  hx-post="{% url 'calculator:delivery_set_offer' item.pk %}"
+                  hx-trigger="change"
+                  hx-target="#delivery-items-area"
+                  hx-swap="outerHTML"
+                  class="form-select text-xs py-1 max-w-[180px]">
+            <option value="">★ Лучшее (авто)</option>
+            {% for offer in item.requirement.offers.all %}
+            <option value="{{ offer.pk }}"
+              {% if item.selected_offer_id == offer.pk %}selected{% endif %}>
+              {{ offer.supplier_name }} — {{ offer.price_per_unit|floatformat:2|intcomma }} ₽
+            </option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <span class="text-xs text-red-400">Нет КП — <a href="{% url 'calculator:offers_list' %}" class="underline">добавить</a></span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-right tabular-nums text-gray-700">
+          {% if item.active_offer %}
+            {{ item.active_offer.price_per_unit|floatformat:2|intcomma }} ₽
+          {% else %}
+            <span class="text-gray-300">—</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-right tabular-nums font-bold">
+          {% if item.active_total %}
+            <span class="text-gray-800">{{ item.active_total|floatformat:2|intcomma }} ₽</span>
+          {% else %}
+            <span class="text-red-400 text-xs font-normal">нет КП</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="border-t-2 border-gray-300 bg-gray-50">
+        <td colspan="4" class="px-4 py-3 text-sm font-semibold text-gray-700 text-right">
+          Итого закупка:
+        </td>
+        <td class="px-4 py-3 text-right font-bold text-lg text-gray-900">
+          {{ delivery.total_purchase|floatformat:2|intcomma }} ₽
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+{% if new_total is not None %}
+{# OOB-обновление поля purchase_amount в форме калькулятора #}
+<input id="id_purchase_amount"
+       hx-swap-oob="true"
+       type="number"
+       name="purchase_amount"
+       value="{{ new_total|unlocalize }}"
+       step="0.01" min="0"
+       class="form-input"
+       placeholder="100 000">
+{% endif %}

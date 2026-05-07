@@ -1,0 +1,198 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize %}
+
+{% block title %}Потребности в закупках{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Потребности в закупках</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Опишите что нужно купить — затем добавьте КП от поставщиков и сравните.
+    </p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="{% url 'calculator:delivery_list' %}"
+       class="text-sm text-gray-500 hover:text-gray-700 transition px-3 py-2 rounded-lg border border-gray-200 bg-white">
+      🚚 Мои поставки
+    </a>
+    <button onclick="document.getElementById('req-form-panel').classList.toggle('hidden')"
+            class="btn-primary text-sm whitespace-nowrap">
+      + Добавить потребность
+    </button>
+  </div>
+</div>
+
+<!-- ══ ФОРМА ДОБАВЛЕНИЯ ПОТРЕБНОСТИ ══ -->
+<div id="req-form-panel" class="{% if not form.errors %}hidden{% endif %} mb-6">
+  <div class="bg-white rounded-xl shadow-sm border border-yellow-200 p-5">
+    <h2 class="font-semibold text-gray-700 mb-4">📋 Новая потребность</h2>
+    <div id="req-form-errors"></div>
+
+    <form hx-post="{% url 'calculator:requirements' %}"
+          hx-target="#req-tbody"
+          hx-swap="afterbegin"
+          hx-on::after-request="if(event.detail.successful){ this.reset(); document.getElementById('req-form-panel').classList.add('hidden'); document.getElementById('req-form-errors').innerHTML=''; document.getElementById('req-empty').classList.add('hidden'); }">
+      {% csrf_token %}
+
+      <!-- Строка 1: наименование -->
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          {{ form.name.label }} <span class="text-red-500">*</span>
+        </label>
+        {{ form.name }}
+        {% if form.name.errors %}<p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+
+      <!-- Строка 2: сокращённое наименование -->
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          {{ form.short_name.label }}
+          <span class="text-xs text-gray-400 font-normal ml-1">— для таблиц и списков</span>
+        </label>
+        {{ form.short_name }}
+        {% if form.short_name.errors %}<p class="text-red-500 text-xs mt-1">{{ form.short_name.errors.0 }}</p>{% endif %}
+      </div>
+
+      <!-- Строка 3: количество + единица -->
+      <div class="grid grid-cols-2 gap-4 mb-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.quantity.label }}</label>
+          {{ form.quantity }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.unit.label }}</label>
+          {{ form.unit }}
+        </div>
+      </div>
+
+      <!-- Строка 4: описание -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.description.label }}</label>
+        {{ form.description }}
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" class="btn-primary text-sm">Добавить</button>
+        <button type="button"
+                onclick="document.getElementById('req-form-panel').classList.add('hidden')"
+                class="text-sm text-gray-500 hover:text-gray-700 transition">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ ТАБЛИЦА ПОТРЕБНОСТЕЙ ══ -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-24">
+  <div id="req-empty" class="{% if requirements %}hidden{% endif %} p-12 text-center text-gray-400">
+    <div class="text-5xl mb-4">📝</div>
+    <p class="text-base font-medium mb-1">Потребностей пока нет</p>
+    <p class="text-sm">Нажмите «+ Добавить потребность» чтобы начать</p>
+  </div>
+
+  <div class="{% if not requirements %}hidden{% endif %} overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
+          <th class="px-4 py-3 w-8">
+            <input type="checkbox" id="check-all" class="form-checkbox" title="Выбрать все">
+          </th>
+          <th class="px-4 py-3">Наименование</th>
+          <th class="px-4 py-3 text-center">Кол-во</th>
+          <th class="px-4 py-3 text-center">Ед.</th>
+          <th class="px-4 py-3">Описание</th>
+          <th class="px-4 py-3 text-center">КП</th>
+          <th class="px-4 py-3 text-right">Лучшая цена</th>
+          <th class="px-4 py-3 text-center">Действия</th>
+        </tr>
+      </thead>
+      <tbody id="req-tbody" class="divide-y divide-gray-100">
+        {% for req in requirements %}
+          {% include "calculator/partials/requirement_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ ПЛАВАЮЩАЯ ПАНЕЛЬ СОЗДАНИЯ ПОСТАВКИ ══ -->
+<div id="delivery-bar"
+     class="hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+    <form method="post" action="{% url 'calculator:delivery_create' %}"
+          class="flex items-center gap-3 flex-wrap">
+      {% csrf_token %}
+      <div id="delivery-bar-count"
+           class="text-sm font-semibold text-gray-700 whitespace-nowrap">
+        Выбрано: 0
+      </div>
+      <div class="flex-1 min-w-0">
+        <input type="text" name="delivery_name"
+               placeholder="Название поставки (необязательно)"
+               class="form-input text-sm w-full max-w-xs">
+      </div>
+      <!-- скрытые поля с ID выбранных потребностей — заполняются JS -->
+      <div id="delivery-bar-ids"></div>
+      <button type="submit"
+              class="btn-primary text-sm whitespace-nowrap">
+        🚚 Создать поставку
+      </button>
+      <button type="button" onclick="clearSelection()"
+              class="text-sm text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+        Отмена
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const bar      = document.getElementById('delivery-bar');
+  const barCount = document.getElementById('delivery-bar-count');
+  const barIds   = document.getElementById('delivery-bar-ids');
+  const checkAll = document.getElementById('check-all');
+
+  function getChecked() {
+    return Array.from(document.querySelectorAll('.req-checkbox:checked'));
+  }
+
+  function updateBar() {
+    const checked = getChecked();
+    if (checked.length > 0) {
+      bar.classList.remove('hidden');
+      barCount.textContent = 'Выбрано: ' + checked.length;
+      // Заполняем скрытые input[name=req_ids]
+      barIds.innerHTML = checked.map(
+        cb => '<input type="hidden" name="req_ids" value="' + cb.value + '">'
+      ).join('');
+    } else {
+      bar.classList.add('hidden');
+      barIds.innerHTML = '';
+    }
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('.req-checkbox').forEach(cb => cb.checked = false);
+    if (checkAll) checkAll.checked = false;
+    updateBar();
+  }
+
+  // «Выбрать все»
+  if (checkAll) {
+    checkAll.addEventListener('change', () => {
+      document.querySelectorAll('.req-checkbox').forEach(cb => {
+        cb.checked = checkAll.checked;
+      });
+      updateBar();
+    });
+  }
+
+  // Делегируем событие на tbody — работает и для строк добавленных через HTMX
+  document.getElementById('req-tbody').addEventListener('change', e => {
+    if (e.target.classList.contains('req-checkbox')) {
+      updateBar();
+    }
+  });
+</script>
+{% endblock %}

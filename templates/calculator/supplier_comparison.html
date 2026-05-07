@@ -1,0 +1,180 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize %}
+
+{% block title %}Сравнение поставщиков по КП{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Сравнение поставщиков</h1>
+  <p class="text-sm text-gray-500 mt-1">
+    Добавьте КП от нескольких поставщиков — система автоматически найдёт лучшее предложение.
+  </p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+  <!-- ══ ЛЕВАЯ КОЛОНКА: форма добавления КП ══ -->
+  <div class="lg:col-span-2 space-y-4">
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <h2 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+        <span class="text-yellow-500">📋</span> Добавить КП
+      </h2>
+
+      <div id="offer-form-errors"></div>
+
+      <form id="offer-form"
+            hx-post="{% url 'calculator:supplier_comparison' %}{% if selected_req %}?req={{ selected_req.pk }}{% endif %}"
+            hx-target="#offers-area"
+            hx-swap="innerHTML"
+            hx-on::after-request="if(event.detail.successful){ document.getElementById('offer-form-errors').innerHTML=''; document.querySelectorAll('#offer-form input:not([type=hidden]), #offer-form textarea').forEach(el => { if(el.name !== 'requirement') el.value=''; }); var lbl=document.getElementById('offer-form').dataset.reqLabel; if(lbl) document.getElementById('req-search-input').value=lbl; }"
+            class="space-y-3">
+        {% csrf_token %}
+        {{ form.requirement }}
+
+        <!-- Поиск потребности с автокомплитом -->
+        <div class="relative">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Потребность
+            <span class="text-red-500">*</span>
+          </label>
+          <input type="text"
+                 id="req-search-input"
+                 name="q"
+                 value="{% if selected_req %}{{ selected_req.name }} — {{ selected_req.quantity }} {{ selected_req.unit }}{% endif %}"
+                 placeholder="Начните вводить название…"
+                 autocomplete="off"
+                 class="form-input"
+                 hx-get="{% url 'calculator:search_requirements' %}"
+                 hx-trigger="keyup changed delay:300ms"
+                 hx-target="#req-search-results"
+                 hx-swap="innerHTML"
+                 hx-include="[name=q]">
+          <!-- Выпадающий список результатов -->
+          <div class="relative">
+            <ul id="req-search-results"
+                class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+            </ul>
+          </div>
+          {% if form.requirement.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ form.requirement.errors.0 }}</p>
+          {% endif %}
+          <p class="text-xs text-gray-400 mt-1">
+            Нет нужной?
+            <a href="{% url 'calculator:requirements' %}" class="text-blue-500 hover:underline">
+              Создать потребность →
+            </a>
+          </p>
+        </div>
+
+        <!-- Поставщик -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.supplier_name.label }}</label>
+          {{ form.supplier_name }}
+          {% if form.supplier_name.errors %}<p class="text-red-500 text-xs mt-1">{{ form.supplier_name.errors.0 }}</p>{% endif %}
+        </div>
+
+        <!-- Цена -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.price_per_unit.label }}</label>
+          {{ form.price_per_unit }}
+          {% if form.price_per_unit.errors %}<p class="text-red-500 text-xs mt-1">{{ form.price_per_unit.errors.0 }}</p>{% endif %}
+        </div>
+
+        <!-- Срок доставки -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.delivery_days.label }}</label>
+          {{ form.delivery_days }}
+        </div>
+
+        <!-- Ссылка -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.link.label }}</label>
+          {{ form.link }}
+        </div>
+
+        <!-- Комментарий -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.comment.label }}</label>
+          {{ form.comment }}
+        </div>
+
+        <button type="submit" class="btn-primary w-full text-center text-sm">
+          Добавить КП →
+        </button>
+      </form>
+    </div>
+
+    <!-- Быстрый переход к потребности -->
+    {% if requirements %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">📝 Все потребности</h3>
+      <ul class="space-y-1">
+        {% for req in requirements %}
+        <li>
+          <a href="{% url 'calculator:supplier_comparison' %}?req={{ req.pk }}"
+             class="flex items-center justify-between text-sm px-2 py-1.5 rounded-lg transition
+                    {% if selected_req.pk == req.pk %}bg-yellow-100 text-yellow-800 font-medium{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+            <span class="truncate">{{ req.name }}</span>
+            <span class="ml-2 text-xs {% if selected_req.pk == req.pk %}text-yellow-600{% else %}text-gray-400{% endif %} flex-shrink-0">
+              {{ req.offers.count }} КП
+            </span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ══ ПРАВАЯ КОЛОНКА: таблица сравнения ══ -->
+  <div class="lg:col-span-3">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div id="offers-area">
+        {% include "calculator/partials/offers_table.html" %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Показываем/скрываем выпадающий список при вводе
+  const searchInput = document.getElementById('req-search-input');
+  const searchResults = document.getElementById('req-search-results');
+
+  // Если потребность выбрана через URL — сохраняем label для восстановления после submit
+  {% if selected_req %}
+  document.getElementById('offer-form').dataset.reqLabel = searchInput.value;
+  {% endif %}
+
+  document.addEventListener('htmx:afterSwap', (e) => {
+    if (e.detail.target.id === 'req-search-results') {
+      if (searchResults.innerHTML.trim()) {
+        searchResults.classList.remove('hidden');
+      } else {
+        searchResults.classList.add('hidden');
+      }
+    }
+  });
+
+  // Закрываем список при клике вне
+  document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+      searchResults.classList.add('hidden');
+    }
+  });
+
+  // Функция выбора потребности из выпадающего списка
+  function selectRequirement(id, label) {
+    document.getElementById('id_requirement').value = id;
+    searchInput.value = label;
+    document.getElementById('offer-form').dataset.reqLabel = label;
+    searchResults.classList.add('hidden');
+    searchResults.innerHTML = '';
+  }
+</script>
+{% endblock %}

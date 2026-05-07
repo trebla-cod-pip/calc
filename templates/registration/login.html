@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — Calc</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg:            #fafaf9;
+      --surface:       #ffffff;
+      --border:        #ececec;
+      --border-strong: #d4d4d4;
+      --text:          #1f1f1f;
+      --text-2:        #6b6b6b;
+      --text-3:        #9b9b9b;
+      --primary:       #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-soft:  #eff4ff;
+      --primary-soft2: #dbeafe;
+      --danger:        #b91c1c;
+      --danger-soft:   #fef2f2;
+      --indigo:        #6366f1;
+      --shadow-sm: 0 1px 2px rgba(15,23,42,.04);
+      --shadow-lg: 0 8px 32px rgba(15,23,42,.08), 0 1px 3px rgba(15,23,42,.04);
+      --r: 8px; --r-lg: 12px; --r-xl: 16px;
+    }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 380px;
+      padding: 24px 16px;
+    }
+
+    /* Brand */
+    .brand {
+      display: flex; align-items: center; gap: 12px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+    .brand-mark {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--indigo));
+      display: grid; place-items: center;
+      color: white; font-weight: 700; font-size: 16px;
+      box-shadow: 0 4px 12px rgba(37,99,235,.3);
+    }
+    .brand-name { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+    .brand-sub  { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 28px 28px 24px;
+      box-shadow: var(--shadow-lg);
+    }
+    .card-title {
+      font-size: 18px; font-weight: 600; letter-spacing: -.01em;
+      margin: 0 0 4px;
+    }
+    .card-sub { font-size: 13px; color: var(--text-3); margin-bottom: 24px; }
+
+    /* Form */
+    .f-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .f-label { font-size: 12px; font-weight: 500; color: var(--text-2); }
+    .f-input {
+      height: 40px; padding: 0 13px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r);
+      font-family: inherit; font-size: 14px; color: var(--text);
+      width: 100%; outline: none;
+      transition: border-color .12s, box-shadow .12s;
+    }
+    .f-input:hover  { border-color: #b8b8b8; }
+    .f-input:focus  { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+    /* Error */
+    .error-box {
+      background: var(--danger-soft);
+      border: 1px solid #fca5a5;
+      border-radius: var(--r);
+      padding: 10px 13px;
+      margin-bottom: 16px;
+      font-size: 13px; color: var(--danger);
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+
+    /* Button */
+    .btn-submit {
+      width: 100%; height: 42px;
+      background: var(--primary); border: none;
+      color: white; font-family: inherit;
+      font-size: 14px; font-weight: 600;
+      border-radius: var(--r); cursor: pointer;
+      transition: background .12s, transform .06s;
+      box-shadow: 0 2px 4px rgba(37,99,235,.3);
+      margin-top: 6px;
+    }
+    .btn-submit:hover  { background: var(--primary-hover); }
+    .btn-submit:active { transform: translateY(1px); }
+
+    /* Footer note */
+    .login-note {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px; color: var(--text-3);
+      line-height: 1.6;
+    }
+    .login-note a { color: var(--primary); text-decoration: none; }
+    .login-note a:hover { text-decoration: underline; }
+
+    /* Background decoration */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(37,99,235,.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(99,102,241,.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-wrap">
+
+  <!-- Brand -->
+  <div class="brand">
+    <div class="brand-mark">C</div>
+    <div>
+      <div class="brand-name">Calc</div>
+    </div>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+    <h1 class="card-title">Вход в систему</h1>
+    <p class="card-sub">Введите логин и пароль, выданные администратором</p>
+
+    {% if form.errors %}
+    <div class="error-box">
+      <span>🔒</span>
+      <span>
+        Неверный логин или пароль. Проверьте данные и попробуйте снова.
+        {% if form.non_field_errors %}{{ form.non_field_errors.0 }}{% endif %}
+      </span>
+    </div>
+    {% endif %}
+
+    {% if next %}
+    {% if user.is_authenticated %}
+    <div style="background:var(--primary-soft);border:1px solid var(--primary-soft2);border-radius:var(--r);padding:10px 13px;margin-bottom:16px;font-size:13px;color:var(--primary)">
+      У вашего аккаунта нет доступа к этой странице.
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div class="f-row">
+        <label class="f-label" for="id_username">Логин</label>
+        <input class="f-input"
+               type="text"
+               id="id_username"
+               name="username"
+               value="{{ form.username.value|default:'' }}"
+               autofocus
+               autocomplete="username"
+               placeholder="Введите логин">
+      </div>
+
+      <div class="f-row" style="margin-bottom:20px">
+        <label class="f-label" for="id_password">Пароль</label>
+        <input class="f-input"
+               type="password"
+               id="id_password"
+               name="password"
+               autocomplete="current-password"
+               placeholder="••••••••">
+      </div>
+
+      <button type="submit" class="btn-submit">
+        Войти →
+      </button>
+    </form>
+  </div>
+
+  <!-- Footer -->
+  <div class="login-note">
+    Нет аккаунта? Обратитесь к администратору.<br>
+    <a href="/admin/">Вход для администраторов →</a>
+  </div>
+
+</div>
+
+</body>
+</html>

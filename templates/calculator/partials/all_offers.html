@@ -1,0 +1,226 @@
+{% load humanize %}
+
+{% comment %}
+  Партиал: все потребности с их КП.
+  Используется на странице /calculator/offers/
+  hx-target="#all-offers-area"
+{% endcomment %}
+
+{% if requirements %}
+
+  {# ── Верхняя строка со статистикой ── #}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--text-2)">
+      {% with req_count=requirements|length %}
+        <span style="font-weight:600;color:var(--text)">{{ req_count }}</span>
+        {% if req_count == 1 %}потребность{% elif req_count >= 2 and req_count <= 4 %}потребности{% else %}потребностей{% endif %}
+      {% endwith %}
+    </div>
+    <a href="{% url 'calculator:requirements' %}"
+       style="font-size:12px;color:var(--primary);text-decoration:none">
+      + Создать потребность
+    </a>
+  </div>
+
+  {# ── Карточки по каждой потребности ── #}
+  {% for req in requirements %}
+  <div id="req-card-{{ req.pk }}"
+       style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+              margin-bottom:14px;overflow:hidden">
+
+    {# Заголовок потребности #}
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:14px 18px;border-bottom:1px solid var(--border);
+                background:var(--surface-2)">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">{{ req.name }}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:1px">
+          {{ req.quantity }} {{ req.unit }}
+          {% if req.description %} · {{ req.description|truncatechars:60 }}{% endif %}
+        </div>
+      </div>
+      {% with cnt=req.offers.count %}
+      <div style="display:flex;align-items:center;gap:8px">
+        {% if cnt %}
+        <span style="font-size:12px;font-weight:500;
+                     padding:2px 9px;border-radius:999px;
+                     background:var(--primary-soft);color:var(--primary);
+                     border:1px solid var(--primary-soft2)">
+          {{ cnt }} КП
+        </span>
+        {% else %}
+        <span style="font-size:12px;color:var(--text-3)">нет КП</span>
+        {% endif %}
+        <a href="{% url 'calculator:index' %}{% if req.best_offer %}?purchase_price={{ req.best_offer.price_per_unit }}{% endif %}"
+           title="Рассчитать прибыль с лучшей ценой"
+           style="display:inline-flex;align-items:center;justify-content:center;
+                  width:28px;height:28px;border-radius:var(--r-sm);
+                  background:{% if req.best_offer %}#fef9c3{% else %}var(--surface){% endif %};
+                  border:1px solid {% if req.best_offer %}#fde047{% else %}var(--border){% endif %};
+                  text-decoration:none;font-size:13px;
+                  {% if not req.best_offer %}opacity:.4;pointer-events:none{% endif %}"
+           {% if not req.best_offer %}tabindex="-1"{% endif %}>💰</a>
+      </div>
+      {% endwith %}
+    </div>
+
+    {# Таблица КП (только если они есть) #}
+    {% with offers=req.offers.all %}
+    {% if offers %}
+    <div style="overflow-x:auto">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;
+                       color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;
+                       background:var(--surface-2)">Поставщик</th>
+            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:500;
+                       color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;
+                       background:var(--surface-2)">Цена/шт, ₽</th>
+            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:500;
+                       color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;
+                       background:var(--surface-2)">Итого, ₽</th>
+            <th style="padding:9px 12px;text-align:center;font-size:11px;font-weight:500;
+                       color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;
+                       background:var(--surface-2)">Срок, дн.</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:500;
+                       color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;
+                       background:var(--surface-2)">Ссылка</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:500;
+                       color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;
+                       background:var(--surface-2)">Комментарий</th>
+            <th style="padding:9px 12px;background:var(--surface-2)"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for offer in offers|dictsort:"price_per_unit" %}
+          {% with is_best=forloop.first %}
+          <tr id="offer-row-{{ offer.pk }}"
+              style="border-bottom:1px solid var(--border);
+                     {% if is_best %}background:#f0fdf4;{% endif %}
+                     transition:background .1s"
+              onmouseover="if(!{% if is_best %}true{% else %}false{% endif %})this.style.background='var(--surface-2)'"
+              onmouseout="this.style.background='{% if is_best %}#f0fdf4{% else %}transparent{% endif %}'">
+
+            <td style="padding:9px 16px;font-weight:500;
+                       color:{% if is_best %}#15803d{% else %}var(--text){% endif %}">
+              <div style="display:flex;align-items:center;gap:7px">
+                {% if is_best %}
+                  <span style="display:inline-flex;align-items:center;justify-content:center;
+                               width:18px;height:18px;border-radius:50%;
+                               background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700"
+                        title="Лучшая цена">★</span>
+                {% endif %}
+                {{ offer.supplier_name }}
+              </div>
+            </td>
+
+            <td style="padding:9px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;
+                       font-size:12.5px;
+                       color:{% if is_best %}#15803d{% else %}var(--text-2){% endif %};
+                       {% if is_best %}font-weight:600{% endif %}">
+              {{ offer.price_per_unit|floatformat:2|intcomma }}
+            </td>
+
+            <td style="padding:9px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;
+                       font-size:12.5px;font-weight:700;
+                       color:{% if is_best %}#15803d{% else %}var(--text){% endif %}">
+              {{ offer.total_price|floatformat:2|intcomma }}
+            </td>
+
+            <td style="padding:9px 12px;text-align:center">
+              {% if offer.delivery_days %}
+                <span style="display:inline-flex;align-items:center;padding:2px 8px;
+                             border-radius:999px;font-size:12px;font-weight:500;
+                             {% if offer.delivery_days <= 3 %}background:#dcfce7;color:#15803d
+                             {% elif offer.delivery_days <= 14 %}background:#fef9c3;color:#b45309
+                             {% else %}background:#fee2e2;color:#b91c1c{% endif %}">
+                  {{ offer.delivery_days }}
+                </span>
+              {% else %}
+                <span style="color:var(--text-3);font-size:12px">—</span>
+              {% endif %}
+            </td>
+
+            <td style="padding:9px 12px">
+              {% if offer.link %}
+                <a href="{{ offer.link }}" target="_blank" rel="noopener"
+                   style="font-size:12px;color:var(--primary);
+                          text-decoration:underline;text-underline-offset:2px">
+                  ссылка
+                </a>
+              {% else %}
+                <span style="color:var(--text-3);font-size:12px">—</span>
+              {% endif %}
+            </td>
+
+            <td style="padding:9px 12px;max-width:160px">
+              {% if offer.comment %}
+                <span style="font-size:12px;color:var(--text-2);display:-webkit-box;
+                             -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"
+                      title="{{ offer.comment }}">{{ offer.comment }}</span>
+              {% else %}
+                <span style="color:var(--text-3);font-size:12px">—</span>
+              {% endif %}
+            </td>
+
+            <td style="padding:9px 12px;text-align:center">
+              <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+                <button hx-get="{% url 'calculator:offer_edit' offer.pk %}"
+                        hx-target="#offer-row-{{ offer.pk }}"
+                        hx-swap="outerHTML"
+                        style="display:inline-flex;align-items:center;justify-content:center;
+                               width:28px;height:28px;border-radius:var(--r-sm);
+                               background:transparent;border:none;cursor:pointer;
+                               color:var(--text-3);transition:color .12s,background .12s"
+                        onmouseover="this.style.color='var(--primary)';this.style.background='var(--primary-soft)'"
+                        onmouseout="this.style.color='var(--text-3)';this.style.background='transparent'"
+                        title="Редактировать">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M11.5 2.5a1.41 1.41 0 0 1 2 2L5 13H2v-3L11.5 2.5z"/>
+                  </svg>
+                </button>
+                <button hx-post="{% url 'calculator:supplier_offer_delete' offer.pk %}"
+                        hx-target="#all-offers-area"
+                        hx-swap="innerHTML"
+                        hx-confirm="Удалить КП от «{{ offer.supplier_name }}»?"
+                        style="display:inline-flex;align-items:center;justify-content:center;
+                               width:28px;height:28px;border-radius:var(--r-sm);
+                               background:transparent;border:none;cursor:pointer;
+                               color:var(--text-3);transition:color .12s,background .12s"
+                        onmouseover="this.style.color='var(--danger)';this.style.background='var(--danger-soft)'"
+                        onmouseout="this.style.color='var(--text-3)';this.style.background='transparent'"
+                        title="Удалить">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M3 4h10M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M6 7v5M10 7v5M4 4l.5 9a1 1 0 0 0 1 .9h5a1 1 0 0 0 1-.9L12 4"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+              padding:48px 32px;text-align:center;color:var(--text-3)">
+    <div style="font-size:36px;margin-bottom:12px">📋</div>
+    <p style="font-size:14px;font-weight:500;color:var(--text-2);margin:0 0 6px">
+      Нет потребностей
+    </p>
+    <p style="font-size:13px;margin:0 0 16px">
+      Сначала создайте потребности, затем добавляйте к ним КП поставщиков.
+    </p>
+    <a href="{% url 'calculator:requirements' %}" class="btn-primary" style="display:inline-flex">
+      Создать потребность →
+    </a>
+  </div>
+{% endif %}

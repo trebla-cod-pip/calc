@@ -1,0 +1,370 @@
+{% load humanize %}
+
+{% if result %}
+
+<!-- ── Сводная карточка ── -->
+<div class="bd-card" style="padding:18px 20px 20px;margin-bottom:14px">
+
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <span style="font-size:17px">📊</span>
+    <span style="font-size:14px;font-weight:600;color:var(--text)">Результат расчёта</span>
+  </div>
+
+  <!-- Цена продажи -->
+  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-lg);
+              padding:14px 16px;text-align:center;margin-bottom:12px">
+    <div style="font-size:10.5px;font-weight:600;color:#92400e;text-transform:uppercase;
+                letter-spacing:.07em;margin-bottom:6px">
+      Необходимая цена продажи
+    </div>
+    <div style="font-size:28px;font-weight:700;color:#b45309;letter-spacing:-.02em;
+                font-variant-numeric:tabular-nums;white-space:nowrap">
+      {{ required_sale|floatformat:2|intcomma }} ₽
+    </div>
+    <div style="font-size:12px;color:#b45309;margin-top:4px">
+      Чтобы получить {{ desired_profit|floatformat:0|intcomma }} ₽ чистыми
+    </div>
+  </div>
+
+  <!-- Сетка метрик 2×2 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
+    <!-- Чистая прибыль -->
+    <div style="border-radius:var(--r);padding:12px;text-align:center;
+      {% if result.net_profit < 0 %}background:var(--danger-soft);border:1px solid #fca5a5
+      {% else %}background:var(--good-soft);border:1px solid #bbf7d0{% endif %}">
+      <div style="font-size:11px;margin-bottom:5px;
+        {% if result.net_profit < 0 %}color:var(--danger){% else %}color:var(--good){% endif %}">
+        Чистая прибыль
+      </div>
+      <div style="font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;
+        {% if result.net_profit < 0 %}color:var(--danger){% else %}color:var(--good){% endif %}">
+        {{ result.net_profit|floatformat:2|intcomma }} ₽
+      </div>
+    </div>
+
+    <!-- Точка безубыточности -->
+    <div style="border-radius:var(--r);padding:12px;text-align:center;
+                background:var(--surface-2);border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text-2);margin-bottom:5px">
+        Точка безубыточности
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);
+                  font-variant-numeric:tabular-nums;white-space:nowrap">
+        {{ breakeven|floatformat:0|intcomma }} ₽
+      </div>
+    </div>
+
+    <!-- Маржа -->
+    <div style="border-radius:var(--r);padding:12px;text-align:center;
+                background:var(--primary-soft);border:1px solid var(--primary-soft2)">
+      <div style="font-size:11px;color:var(--primary);margin-bottom:5px">Маржа</div>
+      <div style="font-size:18px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums">
+        {{ result.margin|floatformat:1 }}%
+      </div>
+    </div>
+
+    <!-- Расходы / Выручка -->
+    <div style="border-radius:var(--r);padding:12px;text-align:center;
+      {% if result.effective_expense_rate > 40 %}background:var(--danger-soft);border:1px solid #fca5a5
+      {% elif result.effective_expense_rate > 25 %}background:var(--warn-soft);border:1px solid #fde68a
+      {% else %}background:var(--good-soft);border:1px solid #bbf7d0{% endif %}">
+      <div style="font-size:11px;margin-bottom:5px;
+        {% if result.effective_expense_rate > 40 %}color:var(--danger)
+        {% elif result.effective_expense_rate > 25 %}color:var(--warn)
+        {% else %}color:var(--good){% endif %}">
+        Расходы / Выручка
+      </div>
+      <div style="font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;
+        {% if result.effective_expense_rate > 40 %}color:var(--danger)
+        {% elif result.effective_expense_rate > 25 %}color:var(--warn)
+        {% else %}color:var(--good){% endif %}">
+        {{ result.effective_expense_rate|floatformat:1 }}%
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Result card ── -->
+<div class="result-card">
+  <div class="res-head">
+    <div class="res-label">Чистая прибыль</div>
+    {% if result.margin >= 20 %}
+      <div class="margin-pill">↑ {{ result.margin|floatformat:1 }}% маржа</div>
+    {% elif result.margin >= 0 %}
+      <div class="margin-pill warn">{{ result.margin|floatformat:1 }}% маржа</div>
+    {% else %}
+      <div class="margin-pill danger">убыток</div>
+    {% endif %}
+  </div>
+  <div class="res-amount" style="{% if result.net_profit < 0 %}color:var(--danger){% endif %}">
+    {{ result.net_profit|floatformat:0|intcomma }}<span class="cur">₽</span>
+  </div>
+  <div class="res-sub">из {{ required_sale|floatformat:0|intcomma }} ₽ продажи</div>
+  {% if result.effective_expense_rate %}
+  <div style="margin-top:4px;font-size:12px;color:var(--text-3)">
+    расходы: {{ result.effective_expense_rate|floatformat:1 }}% · б/у: {{ breakeven|floatformat:0|intcomma }} ₽
+  </div>
+  {% endif %}
+
+  <!-- Donut -->
+  <div id="charts-root"
+       data-purchase="{{ result.purchase_amount }}"
+       data-bank="{{ result.bank.total }}"
+       data-insurance="{{ result.insurance.total }}"
+       data-tax="{{ result.tax.net_tax }}"
+       data-other="{{ result.additional_expenses }}"
+       data-profit="{{ result.net_profit }}"
+       data-sale="{{ result.sale_price }}"
+       data-costs="{{ result.total_costs }}">
+    <div class="donut-row">
+      <div class="donut-wrap">
+        <div id="donut-revenue-svg" style="width:100%;height:100%"></div>
+        <div class="donut-center">
+          <div class="donut-pct" id="donut-margin-pct" style="{% if result.net_profit < 0 %}color:var(--danger){% else %}color:var(--good){% endif %}">
+            {{ result.margin|floatformat:0 }}%
+          </div>
+          <div class="donut-cap">маржа</div>
+        </div>
+      </div>
+      <div class="donut-legend" id="donut-revenue-legend"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Breakdown card ── -->
+<div class="bd-card">
+  <div class="bd-head">
+    <div class="bd-title">Структура расходов</div>
+  </div>
+  <div class="bd-rows">
+
+    <div class="bd-row">
+      <div class="bd-name">Закупка</div>
+      <div class="bd-val">{{ result.purchase_amount|floatformat:0|intcomma }} ₽</div>
+    </div>
+
+    <!-- Банк -->
+    <div style="padding:6px 12px 2px;font-size:10.5px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">
+      Банк
+    </div>
+    <div class="bd-row">
+      <div class="bd-name">
+        Обслуживание
+        {% if result.bank.maintenance_mode == "free" %}
+          <span style="font-size:10.5px;color:var(--good);margin-left:4px">бесплатно</span>
+        {% elif result.bank.maintenance_mode == "rate" %}
+          <span style="font-size:10.5px;color:var(--text-3);margin-left:4px">≈{{ result.bank.maintenance_rate_pct|floatformat:2 }}%</span>
+        {% endif %}
+      </div>
+      <div class="bd-val {% if result.bank.maintenance > 0 %}{% else %}" style="color:var(--good){% endif %}">
+        {% if result.bank.maintenance_mode == "free" %}0 ₽{% else %}{{ result.bank.maintenance|floatformat:0|intcomma }} ₽{% endif %}
+      </div>
+    </div>
+    <div class="bd-row">
+      <div class="bd-name">Платёж поставщику</div>
+      <div class="bd-val">
+        {% if result.bank.outgoing > 0 %}{{ result.bank.outgoing|floatformat:0|intcomma }} ₽
+        {% else %}<span style="color:var(--good)">0 ₽</span>{% endif %}
+      </div>
+    </div>
+    <div class="bd-row">
+      <div class="bd-name">
+        Вывод на карту
+        {% if result.bank.withdrawal.total_commission > 0 %}
+          <span style="font-size:10.5px;color:var(--text-3);margin-left:4px">
+            {{ result.bank.withdrawal.percent_commission|floatformat:2 }}%+{{ result.bank.withdrawal.fixed_commission|floatformat:0 }}₽
+          </span>
+        {% endif %}
+      </div>
+      <div class="bd-val">
+        {% if result.bank.withdrawal.total_commission > 0 %}
+          <span {% if result.bank.withdrawal.total_commission > 500 %}style="color:var(--danger)"{% endif %}>
+            {{ result.bank.withdrawal.total_commission|floatformat:0|intcomma }} ₽
+          </span>
+        {% else %}<span style="color:var(--good)">в лимите</span>{% endif %}
+      </div>
+    </div>
+
+    <!-- Взносы -->
+    <div style="padding:6px 12px 2px;font-size:10.5px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">
+      Взносы
+    </div>
+    <div class="bd-row">
+      <div class="bd-name">
+        Фиксированная часть
+        {% if result.insurance.fixed_mode == "rate" %}
+          <span style="font-size:10.5px;color:var(--text-3);margin-left:4px">≈{{ result.insurance.fixed_rate_pct|floatformat:2 }}%</span>
+        {% endif %}
+      </div>
+      <div class="bd-val">{{ result.insurance.fixed|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% if result.insurance.additional > 0 %}
+    <div class="bd-row">
+      <div class="bd-name">Допвзнос 1%</div>
+      <div class="bd-val">{{ result.insurance.additional|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% endif %}
+
+    <!-- Налог -->
+    <div style="padding:6px 12px 2px;font-size:10.5px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">
+      Налог ({{ tax_system_label }})
+    </div>
+    {% if result.tax.gross_tax %}
+    <div class="bd-row">
+      <div class="bd-name">Начисленный</div>
+      <div class="bd-val">{{ result.tax.gross_tax|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% endif %}
+    {% if result.tax.deduction %}
+    <div class="bd-row">
+      <div class="bd-name">Вычет взносов</div>
+      <div class="bd-val" style="color:var(--good)">− {{ result.tax.deduction|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% endif %}
+    <div class="bd-row">
+      <div class="bd-name" style="font-weight:500;color:var(--text)">
+        К уплате
+        {% if result.tax.is_minimum_tax %}
+          <span class="badge-warning" style="margin-left:4px;font-size:10px">мин. 1%</span>
+        {% endif %}
+      </div>
+      <div class="bd-val">{{ result.tax.net_tax|floatformat:0|intcomma }} ₽</div>
+    </div>
+
+    <!-- Прочие расходы -->
+    {% if result.additional_expenses > 0 %}
+    <div style="padding:6px 12px 2px;font-size:10.5px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">
+      Прочее
+    </div>
+    {% if result.expense_shipping > 0 %}
+    <div class="bd-row">
+      <div class="bd-name">📦 Доставка</div>
+      <div class="bd-val">{{ result.expense_shipping|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% endif %}
+    {% if result.expense_guarantee > 0 %}
+    <div class="bd-row">
+      <div class="bd-name">🏛️ Гарантия</div>
+      <div class="bd-val">{{ result.expense_guarantee|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% endif %}
+    {% if result.expense_etp > 0 %}
+    <div class="bd-row">
+      <div class="bd-name">🖥️ ЭТП</div>
+      <div class="bd-val">{{ result.expense_etp|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% endif %}
+    {% if result.expense_other > 0 %}
+    <div class="bd-row">
+      <div class="bd-name">{{ result.expense_other_label }}</div>
+      <div class="bd-val">{{ result.expense_other|floatformat:0|intcomma }} ₽</div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="bd-divider" style="margin:6px 0"></div>
+    <div class="bd-row">
+      <div class="bd-name" style="font-weight:600;color:var(--text)">Итого расходов</div>
+      <div class="bd-val" style="font-weight:600">{{ result.total_costs|floatformat:0|intcomma }} ₽</div>
+    </div>
+
+    <div class="bd-row bd-total">
+      <div class="bd-name" style="font-weight:600;color:var(--text)">✅ Чистая прибыль</div>
+      <div class="bd-val" style="{% if result.net_profit < 0 %}color:var(--danger){% else %}color:var(--good){% endif %};font-weight:700;font-size:14px">
+        {{ result.net_profit|floatformat:0|intcomma }} ₽
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Диаграмма расходов ── -->
+<div class="bd-card" style="padding:14px 16px">
+  <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">
+    💸 Структура расходов
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+    <div id="donut-costs-svg" style="width:120px;height:120px;flex-shrink:0"></div>
+    <div id="donut-costs-legend" style="width:100%"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.getElementById('charts-root');
+  if (!root) return;
+
+  var purchase  = parseFloat(root.dataset.purchase)  || 0;
+  var bank      = parseFloat(root.dataset.bank)      || 0;
+  var insurance = parseFloat(root.dataset.insurance) || 0;
+  var tax       = parseFloat(root.dataset.tax)       || 0;
+  var other     = parseFloat(root.dataset.other)     || 0;
+  var profit    = parseFloat(root.dataset.profit)    || 0;
+  var sale      = parseFloat(root.dataset.sale)      || 1;
+  var costs     = parseFloat(root.dataset.costs)     || 1;
+
+  var fmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+
+  function drawDonut(svgId, legendId, segments, base, centerSub) {
+    var R = 44, CX = 60, CY = 60, SW = 18;
+    var C = 2 * Math.PI * R;
+    var GAP = 2;
+    var segs = segments.filter(function(s){ return s.value > 0.01; });
+    var circles = '', legendHtml = '', cumulative = 0;
+
+    for (var i = 0; i < segs.length; i++) {
+      var s   = segs[i];
+      var pct = s.value / base;
+      var len = Math.max(pct * C - GAP, 0);
+      circles +=
+        '<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'"'
+        +' fill="none" stroke="'+s.color+'" stroke-width="'+SW+'"'
+        +' stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'"'
+        +' stroke-dashoffset="'+(C/4 - cumulative).toFixed(2)+'"'
+        +' stroke-linecap="butt"/>';
+
+      legendHtml +=
+        '<div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0">'
+        +'<span style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:'+s.color+'"></span>'
+        +'<span style="color:var(--text-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.label+'</span>'
+        +'<span style="font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;font-family:IBM Plex Mono,monospace;font-size:11.5px">'+fmt.format(s.value)+' ₽</span>'
+        +'<span style="color:var(--text-3);font-size:11px;width:32px;text-align:right;flex-shrink:0">'+((pct*100).toFixed(1))+'%</span>'
+        +'</div>';
+
+      cumulative += pct * C;
+    }
+    var bg = '<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="#f1f5f9" stroke-width="'+SW+'"/>';
+    document.getElementById(svgId).innerHTML =
+      '<svg viewBox="0 0 120 120" style="width:100%;height:100%;transform:rotate(-90deg)">'
+      +bg+circles+'</svg>';
+    document.getElementById(legendId).innerHTML = legendHtml;
+  }
+
+  /* Revenue donut */
+  var revenueSegs = [
+    { label:'Закупка',        value:purchase,  color:'#64748b' },
+    { label:'Комиссии банка', value:bank,      color:'#f97316' },
+    { label:'Взносы',         value:insurance, color:'#a855f7' },
+    { label:'Налог',          value:tax,       color:'#ef4444' },
+    { label:'Прочие',         value:other,     color:'#3b82f6' },
+  ];
+  if (profit > 0) revenueSegs.push({ label:'Прибыль', value:profit, color:'#22c55e' });
+
+  var revenueBase = profit < 0 ? costs : sale;
+  drawDonut('donut-revenue-svg','donut-revenue-legend', revenueSegs, revenueBase, profit < 0 ? 'расходы' : 'выручка');
+
+  /* Costs donut */
+  var costSegs = [
+    { label:'Закупка',        value:purchase,  color:'#64748b' },
+    { label:'Комиссии банка', value:bank,      color:'#f97316' },
+    { label:'Взносы',         value:insurance, color:'#a855f7' },
+    { label:'Налог',          value:tax,       color:'#ef4444' },
+    { label:'Прочие',         value:other,     color:'#3b82f6' },
+  ];
+  drawDonut('donut-costs-svg','donut-costs-legend', costSegs, costs, 'расходы');
+})();
+</script>
+
+{% endif %}

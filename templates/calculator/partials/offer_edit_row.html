@@ -1,0 +1,86 @@
+{% comment %}
+  Строка с inline-формой редактирования КП.
+  hx-get="/calculator/offers/<pk>/edit/" → hx-target="#offer-row-<pk>" hx-swap="outerHTML"
+{% endcomment %}
+<tr id="offer-row-{{ offer.pk }}"
+    style="background:#eff6ff;border-bottom:1px solid var(--border)">
+  <td colspan="7" style="padding:12px 16px">
+    <form hx-post="{% url 'calculator:offer_edit' offer.pk %}"
+          hx-target="#all-offers-area"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div style="margin-bottom:8px;padding:6px 10px;background:var(--danger-soft);
+                  border:1px solid #fca5a5;border-radius:var(--r-sm);
+                  font-size:12px;color:var(--danger)">
+        {{ form.non_field_errors.0 }}
+      </div>
+      {% endif %}
+
+      {# Первая строка: основные поля #}
+      <div style="display:grid;grid-template-columns:1fr 120px 80px 1fr;gap:8px;margin-bottom:8px">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:3px">
+            {{ form.supplier_name.label }}
+          </label>
+          {{ form.supplier_name }}
+          {% if form.supplier_name.errors %}
+            <p style="font-size:11px;color:var(--danger);margin-top:2px">{{ form.supplier_name.errors.0 }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:3px">
+            {{ form.price_per_unit.label }}
+          </label>
+          {{ form.price_per_unit }}
+          {% if form.price_per_unit.errors %}
+            <p style="font-size:11px;color:var(--danger);margin-top:2px">{{ form.price_per_unit.errors.0 }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:3px">
+            {{ form.delivery_days.label }}
+          </label>
+          {{ form.delivery_days }}
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:3px">
+            {{ form.link.label }}
+          </label>
+          {{ form.link }}
+        </div>
+      </div>
+
+      {# Вторая строка: комментарий + кнопки #}
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:3px">
+            {{ form.comment.label }}
+          </label>
+          {{ form.comment }}
+        </div>
+        <div style="display:flex;gap:6px;padding-bottom:1px">
+          <button type="button"
+                  hx-get="{% url 'calculator:all_offers_partial' %}"
+                  hx-target="#all-offers-area"
+                  hx-swap="innerHTML"
+                  style="height:36px;padding:0 14px;border-radius:var(--r);
+                         background:var(--surface);border:1px solid var(--border-strong);
+                         font-family:inherit;font-size:13px;color:var(--text-2);
+                         cursor:pointer;white-space:nowrap;
+                         transition:background .1s,color .1s"
+                  onmouseover="this.style.background='var(--surface-2)'"
+                  onmouseout="this.style.background='var(--surface)'">
+            Отмена
+          </button>
+          <button type="submit"
+                  class="btn-primary"
+                  style="white-space:nowrap">
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </form>
+  </td>
+</tr>

@@ -1,0 +1,120 @@
+{% load humanize l10n %}
+
+{% for item in annotated_offers %}
+{% with offer=item.offer total=item.total is_min=item.is_min is_max=item.is_max %}
+<tr class="hover:bg-gray-50 transition-colors
+  {% if is_min %}bg-green-50{% elif is_max %}bg-red-50{% endif %}">
+
+  <!-- Поставщик -->
+  <td class="px-4 py-3 font-medium
+    {% if is_min %}text-green-800{% elif is_max %}text-red-800{% else %}text-gray-800{% endif %}">
+    <div class="flex items-center gap-2">
+      {% if is_min %}
+        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-200 text-green-700 text-xs font-bold" title="Минимальная цена">↓</span>
+      {% elif is_max %}
+        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-200 text-red-700 text-xs font-bold" title="Максимальная цена">↑</span>
+      {% endif %}
+      {{ offer.name }}
+    </div>
+    <div class="text-xs text-gray-400 mt-0.5">{{ offer.created_at|date:"d.m.Y" }}</div>
+  </td>
+
+  <!-- Цена за единицу -->
+  <td class="px-4 py-3 text-right font-semibold tabular-nums
+    {% if is_min %}text-green-700{% elif is_max %}text-red-700{% else %}text-gray-700{% endif %}">
+    {{ offer.unit_price|floatformat:2|intcomma }}
+  </td>
+
+  <!-- Доставка -->
+  <td class="px-4 py-3 text-right tabular-nums text-gray-600">
+    {% if offer.shipping_cost %}
+      {{ offer.shipping_cost|floatformat:2|intcomma }}
+    {% else %}
+      <span class="text-gray-300">—</span>
+    {% endif %}
+  </td>
+
+  <!-- Итоговая стоимость -->
+  <td class="px-4 py-3 text-right font-bold tabular-nums
+    {% if is_min %}text-green-700{% elif is_max %}text-red-700{% else %}text-gray-800{% endif %}">
+    {{ total|floatformat:2|intcomma }}
+  </td>
+
+  <!-- Срок поставки -->
+  <td class="px-4 py-3 text-center">
+    {% if offer.delivery_days %}
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+        {% if offer.delivery_days <= 3 %}bg-green-100 text-green-700
+        {% elif offer.delivery_days <= 14 %}bg-yellow-100 text-yellow-700
+        {% else %}bg-red-100 text-red-700{% endif %}">
+        🕐 {{ offer.delivery_days }}
+      </span>
+    {% else %}
+      <span class="text-gray-300 text-xs">—</span>
+    {% endif %}
+  </td>
+
+  <!-- Ссылка на КП -->
+  <td class="px-4 py-3">
+    {% if offer.document_url %}
+      <a href="{{ offer.document_url }}" target="_blank" rel="noopener"
+         class="inline-flex items-center gap-1 text-blue-500 hover:text-blue-700 text-xs transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+        </svg>
+        Открыть
+      </a>
+    {% else %}
+      <span class="text-gray-300 text-xs">—</span>
+    {% endif %}
+  </td>
+
+  <!-- Комментарий -->
+  <td class="px-4 py-3 text-xs text-gray-500 max-w-[180px]">
+    {% if offer.comment %}
+      <span class="line-clamp-2" title="{{ offer.comment }}">{{ offer.comment }}</span>
+    {% else %}
+      <span class="text-gray-300">—</span>
+    {% endif %}
+  </td>
+
+  <!-- Действия -->
+  <td class="px-4 py-3">
+    <div class="flex items-center justify-center gap-2">
+
+      <!-- Кнопка «Profit» — передаёт unit_price в калькулятор -->
+      <a href="{% url 'calculator:index' %}?purchase_price={{ offer.unit_price|unlocalize }}&shipping={{ offer.shipping_cost|unlocalize }}"
+         title="Рассчитать прибыль для этого поставщика"
+         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-500
+                text-gray-900 text-xs font-semibold transition active:scale-95">
+        💰 Profit
+      </a>
+
+      <!-- Удалить -->
+      <button hx-post="{% url 'calculator:vendor_delete' offer.pk %}"
+              hx-target="#vendor-tbody"
+              hx-swap="innerHTML"
+              hx-include="#quantity-input"
+              hx-confirm="Удалить КП от «{{ offer.name }}»?"
+              title="Удалить"
+              class="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                     text-gray-400 hover:text-red-500 hover:bg-red-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      </button>
+
+    </div>
+  </td>
+
+</tr>
+{% endwith %}
+{% empty %}
+<tr>
+  <td colspan="8" class="px-4 py-10 text-center text-gray-400 text-sm">
+    Нет КП. Добавьте первое предложение.
+  </td>
+</tr>
+{% endfor %}

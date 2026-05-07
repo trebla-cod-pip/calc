@@ -1,0 +1,76 @@
+{% load humanize %}
+<tr id="req-row-{{ req.pk }}" class="hover:bg-gray-50 transition-colors">
+  <td class="px-4 py-3 w-8">
+    <input type="checkbox" class="req-checkbox form-checkbox" value="{{ req.pk }}">
+  </td>
+  <td class="px-4 py-3">
+    <div class="font-medium text-gray-800">
+      {% if req.short_name %}
+        {{ req.short_name }}
+        <div class="text-xs text-gray-400 mt-0.5 truncate max-w-[180px] cursor-pointer select-none
+                    hover:text-blue-500 transition-colors"
+             title="Нажмите, чтобы скопировать"
+             onclick="copyReqName(this, '{{ req.name|escapejs }}')">{{ req.name }}</div>
+      {% else %}
+        {{ req.name }}
+      {% endif %}
+    </div>
+  </td>
+  <td class="px-4 py-3 text-center tabular-nums text-gray-700">{{ req.quantity }}</td>
+  <td class="px-4 py-3 text-center text-gray-500">{{ req.unit }}</td>
+  <td class="px-4 py-3 text-xs text-gray-500 max-w-[200px]">
+    {% if req.description %}
+      <span class="line-clamp-2" title="{{ req.description }}">{{ req.description }}</span>
+    {% else %}
+      <span class="text-gray-300">—</span>
+    {% endif %}
+  </td>
+  <td class="px-4 py-3 text-center">
+    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+      {% if req.offers.count > 0 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-500{% endif %}">
+      {{ req.offers.count }}
+    </span>
+  </td>
+  <td class="px-4 py-3 text-right tabular-nums">
+    {% with best=req.best_offer %}
+      {% if best %}
+        <span class="font-semibold text-green-700">{{ best.total_price|floatformat:2|intcomma }} ₽</span>
+        <div class="text-xs text-gray-400">{{ best.supplier_name }}</div>
+      {% else %}
+        <span class="text-gray-300 text-xs">нет КП</span>
+      {% endif %}
+    {% endwith %}
+  </td>
+  <td class="px-4 py-3">
+    <div class="flex items-center justify-center gap-1.5">
+      <!-- Создать КП -->
+      <a href="{% url 'calculator:offers_list' %}?req={{ req.pk }}"
+         title="Добавить КП к этой потребности"
+         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-500
+                text-gray-900 text-xs font-semibold transition whitespace-nowrap">
+        ➕ Создать КП
+      </a>
+      <!-- Сравнить -->
+      {% if req.offers.count > 0 %}
+      <a href="{% url 'calculator:offers_list' %}?req={{ req.pk }}"
+         title="Сравнить предложения"
+         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100
+                text-blue-700 text-xs font-medium transition">
+        📊
+      </a>
+      {% endif %}
+      <!-- Удалить -->
+      <button hx-post="{% url 'calculator:requirement_delete' req.pk %}"
+              hx-target="#req-row-{{ req.pk }}"
+              hx-swap="outerHTML"
+              hx-confirm="Удалить «{{ req.short_name|default:req.name }}» и все её КП?"
+              class="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                     text-gray-400 hover:text-red-500 hover:bg-red-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      </button>
+    </div>
+  </td>
+</tr>

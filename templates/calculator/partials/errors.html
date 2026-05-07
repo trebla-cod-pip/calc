@@ -1,0 +1,13 @@
+{% if form.errors %}
+<div class="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1">
+  <p class="font-semibold text-red-700 text-sm">Исправьте ошибки в форме:</p>
+  {% for field in form %}
+    {% for error in field.errors %}
+      <p class="text-red-600 text-sm">• <strong>{{ field.label }}:</strong> {{ error }}</p>
+    {% endfor %}
+  {% endfor %}
+  {% for error in form.non_field_errors %}
+    <p class="text-red-600 text-sm">• {{ error }}</p>
+  {% endfor %}
+</div>
+{% endif %}

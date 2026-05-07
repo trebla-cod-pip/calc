@@ -1,0 +1,92 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize %}
+
+{% block title %}Мои поставки{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Мои поставки</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Поставки создаются из выбранных потребностей на странице
+      <a href="{% url 'calculator:requirements' %}" class="text-blue-500 hover:underline">Потребности →</a>
+    </p>
+  </div>
+  <a href="{% url 'calculator:requirements' %}"
+     class="btn-primary text-sm whitespace-nowrap">
+    + Создать поставку
+  </a>
+</div>
+
+{% if deliveries %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for delivery in deliveries %}
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="font-semibold text-gray-800">{{ delivery.name }}</h2>
+        <p class="text-xs text-gray-400 mt-0.5">{{ delivery.created_at|date:"d.m.Y H:i" }}</p>
+      </div>
+      <form method="post" action="{% url 'calculator:delivery_delete' delivery.pk %}"
+            onsubmit="return confirm('Удалить поставку «{{ delivery.name|escapejs }}»?')">
+        {% csrf_token %}
+        <button type="submit"
+                class="text-gray-300 hover:text-red-500 transition p-1 rounded">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <!-- Позиции -->
+    <ul class="space-y-1 text-sm text-gray-600">
+      {% for item in delivery.items.all %}
+      <li class="flex items-center justify-between gap-2">
+        <span class="truncate">
+          {{ item.requirement.short_name|default:item.requirement.name }}
+          <span class="text-gray-400 text-xs">× {{ item.requirement.quantity }} {{ item.requirement.unit }}</span>
+        </span>
+        <span class="tabular-nums text-gray-700 flex-shrink-0 text-xs">
+          {% with offer=item.active_offer %}
+            {% if offer %}{{ offer.total_price|floatformat:0|intcomma }} ₽{% else %}<span class="text-red-400">нет КП</span>{% endif %}
+          {% endwith %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <!-- Итог -->
+    <div class="border-t border-gray-100 pt-3 flex items-center justify-between">
+      <div>
+        <div class="text-xs text-gray-400">Итого закупка</div>
+        <div class="text-lg font-bold text-gray-800">
+          {{ delivery.total_purchase|floatformat:0|intcomma }} ₽
+        </div>
+      </div>
+      {% if delivery.has_missing_offers %}
+      <span class="text-xs text-yellow-600 bg-yellow-50 rounded-lg px-2 py-1">
+        ⚠ Нет КП
+      </span>
+      {% endif %}
+      <a href="{% url 'calculator:delivery_detail' delivery.pk %}"
+         class="btn-primary text-sm">
+        🧮 Рассчитать
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="bg-white rounded-xl border border-dashed border-gray-200 p-16 text-center text-gray-400">
+  <div class="text-5xl mb-4">🚚</div>
+  <p class="text-base font-medium mb-1">Поставок пока нет</p>
+  <p class="text-sm mb-4">Выберите потребности и нажмите «Создать поставку»</p>
+  <a href="{% url 'calculator:requirements' %}" class="btn-primary text-sm">
+    Перейти к потребностям →
+  </a>
+</div>
+{% endif %}
+{% endblock %}

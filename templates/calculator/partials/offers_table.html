@@ -1,0 +1,146 @@
+{% load humanize %}
+
+{% if req %}
+<div class="mb-3 flex items-center justify-between">
+  <div>
+    <h3 class="font-semibold text-gray-800">{{ req.name }}</h3>
+    <p class="text-xs text-gray-400">{{ req.quantity }} {{ req.unit }}{% if req.description %} · {{ req.description|truncatechars:80 }}{% endif %}</p>
+  </div>
+  {% if offers %}
+  <span class="text-xs text-gray-400">
+    {{ offers|length }}
+    {% with c=offers|length %}
+      {% if c == 11 or c == 12 or c == 13 or c == 14 %}предложений
+      {% elif c == 1 or c == 21 %}предложение
+      {% elif c == 2 or c == 3 or c == 4 or c == 22 or c == 23 or c == 24 %}предложения
+      {% else %}предложений{% endif %}
+    {% endwith %}
+  </span>
+  {% endif %}
+</div>
+
+{% if offers %}
+<div class="overflow-x-auto rounded-xl border border-gray-100">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
+        <th class="px-4 py-3">Поставщик</th>
+        <th class="px-4 py-3 text-right">Цена/шт, ₽</th>
+        <th class="px-4 py-3 text-right">Итого, ₽</th>
+        <th class="px-4 py-3 text-center">Срок, дн.</th>
+        <th class="px-4 py-3">Ссылка</th>
+        <th class="px-4 py-3">Комментарий</th>
+        <th class="px-4 py-3 text-center">Действия</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for offer in offers %}
+      {% with is_best=forloop.first %}
+      <tr class="hover:bg-gray-50 transition-colors {% if is_best %}bg-green-50{% endif %}">
+        <td class="px-4 py-3 font-medium {% if is_best %}text-green-800{% else %}text-gray-800{% endif %}">
+          <div class="flex items-center gap-2">
+            {% if is_best %}
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-200 text-green-700 text-xs font-bold"
+                    title="Лучшая цена">★</span>
+            {% endif %}
+            {{ offer.supplier_name }}
+          </div>
+        </td>
+        <td class="px-4 py-3 text-right tabular-nums {% if is_best %}text-green-700 font-semibold{% else %}text-gray-700{% endif %}">
+          {{ offer.price_per_unit|floatformat:2|intcomma }}
+        </td>
+        <td class="px-4 py-3 text-right tabular-nums font-bold {% if is_best %}text-green-700{% else %}text-gray-800{% endif %}">
+          {{ offer.total_price|floatformat:2|intcomma }}
+        </td>
+        <td class="px-4 py-3 text-center">
+          {% if offer.delivery_days %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+              {% if offer.delivery_days <= 3 %}bg-green-100 text-green-700
+              {% elif offer.delivery_days <= 14 %}bg-yellow-100 text-yellow-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ offer.delivery_days }}
+            </span>
+          {% else %}
+            <span class="text-gray-300 text-xs">—</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3">
+          {% if offer.link %}
+            <a href="{{ offer.link }}" target="_blank" rel="noopener"
+               class="text-blue-500 hover:text-blue-700 text-xs transition">Открыть →</a>
+          {% else %}
+            <span class="text-gray-300 text-xs">—</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-xs text-gray-500 max-w-[160px]">
+          {% if offer.comment %}
+            <span class="line-clamp-2" title="{{ offer.comment }}">{{ offer.comment }}</span>
+          {% else %}
+            <span class="text-gray-300">—</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-center">
+          <div class="flex items-center justify-center gap-1">
+            <a href="{% url 'calculator:index' %}?purchase_price={{ offer.price_per_unit }}"
+               title="Рассчитать прибыль"
+               class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-500
+                      text-gray-900 text-xs font-semibold transition">
+              💰
+            </a>
+            <button hx-post="{% url 'calculator:supplier_offer_delete' offer.pk %}"
+                    hx-target="#offers-area"
+                    hx-swap="innerHTML"
+                    hx-confirm="Удалить КП от «{{ offer.supplier_name }}»?"
+                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                           text-gray-400 hover:text-red-500 hover:bg-red-50 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Экономия -->
+{% if offers|length > 1 %}
+{% load humanize %}
+<div class="mt-3 flex items-center gap-2 text-xs text-gray-500 bg-green-50 rounded-lg px-4 py-2">
+  <span>💡 Лучшее предложение дешевле худшего на</span>
+  <strong class="text-green-700" id="saving-{{ req.pk }}">—</strong>
+  <span>₽</span>
+</div>
+<script>
+  (function(){
+    var rows = document.querySelectorAll('#offers-area table tbody tr');
+    if (rows.length < 2) return;
+    var prices = Array.from(rows).map(function(r){
+      var cell = r.cells[2];
+      return cell ? parseFloat(cell.textContent.replace(/\s/g,'').replace(',','.')) || 0 : 0;
+    }).filter(function(p){ return p > 0; });
+    if (!prices.length) return;
+    var diff = Math.max.apply(null, prices) - Math.min.apply(null, prices);
+    var el = document.getElementById('saving-{{ req.pk }}');
+    if (el) el.textContent = new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(diff);
+  })();
+</script>
+{% endif %}
+
+{% else %}
+<div class="text-center py-10 text-gray-400">
+  <div class="text-4xl mb-3">📭</div>
+  <p class="text-sm">КП ещё нет. Заполните форму слева и нажмите «Добавить КП».</p>
+</div>
+{% endif %}
+
+{% else %}
+<div class="text-center py-12 text-gray-400">
+  <div class="text-4xl mb-3">🔍</div>
+  <p class="text-sm">Выберите потребность в форме слева,<br>чтобы увидеть сравнение поставщиков.</p>
+</div>
+{% endif %}

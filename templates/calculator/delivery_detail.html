@@ -1,0 +1,350 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize l10n %}
+
+{% block title %}{{ delivery.name }} — Поставка{% endblock %}
+{% block page_title %}{{ delivery.name }}{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Delivery page layout ── */
+  .calc-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* Cards (shared with index.html) */
+  .card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm); }
+  .card + .card { margin-top:14px; }
+  .card-head { display:flex;align-items:center;gap:12px;padding:16px 20px 4px; }
+  .card-num { width:22px;height:22px;border-radius:6px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-size:12px;font-weight:600;flex-shrink:0; }
+  .card-title { font-weight:600;font-size:14px;color:var(--text);white-space:nowrap; }
+  .card-hint { font-size:11px;color:var(--text-3);background:var(--surface-2);padding:2px 8px;border-radius:999px;margin-left:auto;border:1px solid var(--border);white-space:nowrap; }
+  .card-body { padding:12px 20px 20px; }
+  .f-row { display:flex;flex-direction:column;gap:5px; }
+  .f-row + .f-row { margin-top:12px; }
+  .f-label { font-size:12px;font-weight:500;color:var(--text-2);display:flex;align-items:center;gap:5px; }
+  .g2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+  .chk-row { display:flex;align-items:flex-start;gap:9px;cursor:pointer;user-select:none;font-size:13px;color:var(--text); }
+  .chk-row input { margin-top:2px;flex-shrink:0; }
+  .ex-total-row { display:flex;align-items:center;justify-content:space-between;padding:9px 12px;margin-top:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);font-size:13.5px; }
+
+  /* Right sticky */
+  .sticky-right { position:sticky;top:76px;display:flex;flex-direction:column;gap:14px; }
+  .result-card { background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px 22px 22px;box-shadow:var(--shadow-lg); }
+  .res-label { font-size:11px;color:var(--text-3);font-weight:500;text-transform:uppercase;letter-spacing:.07em; }
+  .res-amount { font-size:34px;font-weight:700;letter-spacing:-.025em;color:var(--text);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:6px; }
+  .res-amount .cur { font-size:20px;color:var(--text-3);font-weight:500;margin-left:4px; }
+  .res-sub { font-size:12px;color:var(--text-3);margin-top:3px;font-family:'IBM Plex Mono',monospace;white-space:nowrap; }
+  .res-head { display:flex;align-items:flex-start;justify-content:space-between;gap:8px; }
+  .margin-pill { display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:var(--good-soft);color:var(--good);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;border:1px solid #bbf7d0;white-space:nowrap; }
+  .margin-pill.warn { background:var(--warn-soft);color:var(--warn);border-color:#fde68a; }
+  .margin-pill.danger { background:var(--danger-soft);color:var(--danger);border-color:#fca5a5; }
+  .donut-row { display:flex;gap:16px;align-items:center;margin-top:20px; }
+  .donut-wrap { width:120px;height:120px;flex-shrink:0;position:relative; }
+  .donut-wrap svg { transform:rotate(-90deg); }
+  .donut-center { position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center; }
+  .donut-pct { font-size:20px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap; }
+  .donut-cap { font-size:9.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:500; }
+  .donut-legend { flex:1;display:flex;flex-direction:column;gap:7px;min-width:0; }
+  .leg { display:grid;grid-template-columns:9px 1fr auto;gap:7px;align-items:center;font-size:12.5px;min-width:0; }
+  .leg .sw { width:9px;height:9px;border-radius:3px;flex-shrink:0; }
+  .leg .l-name { color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .leg .l-val { font-variant-numeric:tabular-nums;color:var(--text);font-weight:500;font-size:12px;white-space:nowrap;font-family:'IBM Plex Mono',monospace; }
+  .bd-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden; }
+  .bd-head { padding:12px 16px 4px;display:flex;align-items:center;justify-content:space-between; }
+  .bd-title { font-size:11px;color:var(--text-3);font-weight:500;text-transform:uppercase;letter-spacing:.07em; }
+  .bd-rows { padding:4px 4px 8px; }
+  .bd-row { display:grid;grid-template-columns:1fr auto;gap:8px;padding:7px 12px;align-items:center;border-radius:6px; }
+  .bd-row:hover { background:var(--surface-2); }
+  .bd-name { color:var(--text-2);font-size:12.5px; }
+  .bd-val { font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;font-family:'IBM Plex Mono',monospace; }
+  .bd-divider { height:1px;background:var(--border);margin:4px 12px; }
+  .bd-row.bd-total { background:var(--good-soft);margin:4px 4px 0;padding:10px 12px;border-radius:8px; }
+  .bd-row.bd-total:hover { background:#d1fae5; }
+  .bd-row.bd-total .bd-name { color:var(--text);font-weight:600;font-size:13px; }
+  .bd-row.bd-total .bd-val { color:var(--good);font-weight:700;font-size:14px; }
+  .empty-result { background:var(--surface);border:1.5px dashed var(--border-strong);border-radius:var(--r-xl);padding:48px 28px;text-align:center;color:var(--text-3); }
+  .empty-result .icon { font-size:36px;margin-bottom:12px; }
+  .empty-result p { font-size:13px;line-height:1.6;margin:0; }
+  #loading { display:none;align-items:center;justify-content:center;height:80px;color:var(--text-3);font-size:13px;gap:8px; }
+  .htmx-request #loading { display:flex; }
+  .htmx-request #result-area { opacity:.4;pointer-events:none; }
+
+  /* ── Full-width items table ── */
+  .items-table-wrap {
+    margin-top: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .items-table-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-warm);
+  }
+</style>
+
+<!-- ── Page header ── -->
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+  <div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3);margin-bottom:4px">
+      <a href="{% url 'calculator:delivery_list' %}" style="color:var(--text-3);text-decoration:none;hover:color:var(--text)">Поставки</a>
+      <span>/</span>
+    </div>
+    <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em">{{ delivery.name }}</h1>
+    <div style="font-size:12px;color:var(--text-3);margin-top:3px">
+      Создана {{ delivery.created_at|date:"d.m.Y H:i" }} · {{ delivery.items.count }} позиций
+    </div>
+  </div>
+  <form method="post" action="{% url 'calculator:delivery_delete' delivery.pk %}"
+        onsubmit="return confirm('Удалить поставку «{{ delivery.name|escapejs }}»?')">
+    {% csrf_token %}
+    <button type="submit"
+            style="display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;
+                   border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);
+                   color:var(--text-2);font-size:13px;cursor:pointer;transition:color .12s,border-color .12s"
+            onmouseover="this.style.color='var(--danger)';this.style.borderColor='#fca5a5'"
+            onmouseout="this.style.color='var(--text-2)';this.style.borderColor='var(--border-strong)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+      </svg>
+      Удалить поставку
+    </button>
+  </form>
+</div>
+
+{% if delivery.has_missing_offers %}
+<div style="margin-bottom:16px;display:flex;align-items:center;gap:8px;border-radius:var(--r-lg);
+            background:#fffbeb;border:1px solid #fde68a;padding:10px 14px;font-size:13px;color:#78350f">
+  ⚠️ Для некоторых позиций нет КП — итоговая сумма занижена. Добавьте КП на странице сравнения.
+</div>
+{% endif %}
+
+<!-- ══ Верхняя секция: Форма + Результат ══ -->
+<div class="calc-grid">
+
+  <!-- ── Левая: Параметры сделки ── -->
+  <div>
+    <form id="calc-form"
+          hx-post="{% url 'calculator:calculate' %}"
+          hx-target="#result-area"
+          hx-swap="innerHTML"
+          hx-trigger="submit"
+          hx-indicator="#loading">
+      {% csrf_token %}
+
+      <!-- Card 1: Параметры сделки -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-num">1</div>
+          <div class="card-title">Параметры сделки</div>
+          <div class="card-hint">из поставки</div>
+        </div>
+        <div class="card-body">
+          <div class="g2">
+            <div class="f-row">
+              <label class="f-label" for="{{ form.purchase_amount.id_for_label }}">
+                {{ form.purchase_amount.label }}
+                <span style="font-size:11px;color:var(--primary);margin-left:2px">← поставка</span>
+              </label>
+              {{ form.purchase_amount }}
+            </div>
+            <div class="f-row">
+              <label class="f-label" for="{{ form.desired_profit.id_for_label }}">
+                {{ form.desired_profit.label }}
+              </label>
+              {{ form.desired_profit }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Банк -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-num">2</div>
+          <div class="card-title">Банк и комиссии</div>
+        </div>
+        <div class="card-body">
+          <div class="f-row">
+            <label class="f-label" for="{{ form.tariff.id_for_label }}">{{ form.tariff.label }}</label>
+            {{ form.tariff }}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+            <label class="chk-row">
+              {{ form.supplier_in_same_bank }}
+              <span>{{ form.supplier_in_same_bank.label }}</span>
+            </label>
+            <label class="chk-row">
+              {{ form.maintenance_condition_met }}
+              <span>{{ form.maintenance_condition_met.label }}</span>
+            </label>
+          </div>
+          <div class="g2" style="margin-top:14px">
+            <div class="f-row">
+              <label class="f-label">{{ form.withdrawal_amount.label }}</label>
+              {{ form.withdrawal_amount }}
+            </div>
+            <div class="f-row">
+              <label class="f-label">{{ form.withdrawal_operations.label }}</label>
+              {{ form.withdrawal_operations }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Налоги -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-num">3</div>
+          <div class="card-title">Налогообложение</div>
+        </div>
+        <div class="card-body">
+          <div class="f-row">
+            <label class="f-label">{{ form.tax_system.label }}</label>
+            {{ form.tax_system }}
+          </div>
+          <div style="margin-top:12px">
+            <label class="chk-row">
+              {{ form.has_employees }}
+              <span>{{ form.has_employees.label }}</span>
+            </label>
+          </div>
+          <div class="f-row" style="margin-top:12px">
+            <label class="f-label">{{ form.expected_monthly_revenue.label }}</label>
+            {{ form.expected_monthly_revenue }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Прочие расходы -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-num">4</div>
+          <div class="card-title">Прочие расходы</div>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>📦</span>
+              <span style="font-size:12.5px;color:var(--text-2);width:120px;flex-shrink:0">Доставка</span>
+              <div style="flex:1">{{ form.expense_shipping }}</div>
+              <span style="font-size:12px;color:var(--text-3)">₽</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>🏛️</span>
+              <span style="font-size:12.5px;color:var(--text-2);width:120px;flex-shrink:0">Банк. гарантия</span>
+              <div style="flex:1">{{ form.expense_guarantee }}</div>
+              <span style="font-size:12px;color:var(--text-3)">₽</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>🖥️</span>
+              <span style="font-size:12.5px;color:var(--text-2);width:120px;flex-shrink:0">Комиссия ЭТП</span>
+              <div style="flex:1">{{ form.expense_etp }}</div>
+              <span style="font-size:12px;color:var(--text-3)">₽</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>➕</span>
+              <div style="flex:1">{{ form.expense_other_label }}</div>
+              <div style="width:90px">{{ form.expense_other }}</div>
+              <span style="font-size:12px;color:var(--text-3)">₽</span>
+            </div>
+          </div>
+          <div class="ex-total-row">
+            <span style="font-size:13px;color:var(--text-2);font-weight:500">Итого прочих</span>
+            <span id="total-extra" style="font-weight:700;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;font-variant-numeric:tabular-nums">0 ₽</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:16px;height:42px;font-size:14px;font-weight:600">
+        Рассчитать →
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Правая: Результат ── -->
+  <div class="sticky-right">
+    <div id="loading">
+      <svg class="animate-spin" style="width:18px;height:18px;color:var(--primary)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      </svg>
+      Считаю…
+    </div>
+    <div id="result-area">
+      <div class="empty-result">
+        <div class="icon">🧮</div>
+        <p>Введите желаемую прибыль<br>и нажмите «Рассчитать»</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ Нижняя секция: Позиции поставки (на всю ширину) ══ -->
+<div class="items-table-wrap">
+  <div class="items-table-head">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">📦</span>
+      <span style="font-weight:600;font-size:14px;color:var(--text)">Позиции поставки</span>
+      <span style="font-size:12px;color:var(--text-3);background:var(--surface-2);border:1px solid var(--border);padding:2px 8px;border-radius:999px">
+        {{ delivery.items.count }} позиций
+      </span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--text-3)">Смените КП — сумма обновится автоматически</span>
+      <a href="{% url 'calculator:requirements' %}"
+         style="font-size:12px;color:var(--primary);text-decoration:none;white-space:nowrap">
+        ← Добавить позиции
+      </a>
+    </div>
+  </div>
+
+  {% include "calculator/partials/delivery_items.html" with items=delivery.items.all %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function updateExpenseTotal() {
+    const fields = ['expense_shipping', 'expense_guarantee', 'expense_etp', 'expense_other'];
+    let total = 0;
+    fields.forEach(name => {
+      const el = document.querySelector(`[name=${name}]`);
+      if (el) total += parseFloat(el.value) || 0;
+    });
+    const fmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
+    document.getElementById('total-extra').textContent = fmt.format(total) + ' ₽';
+  }
+  document.querySelectorAll('[name^=expense_]').forEach(el => el.addEventListener('input', updateExpenseTotal));
+  updateExpenseTotal();
+
+  document.querySelectorAll('#calc-form input, #calc-form select').forEach(el => {
+    el.addEventListener('change', () => {
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => {
+        const purchase = document.querySelector('[name=purchase_amount]').value;
+        const desired  = document.querySelector('[name=desired_profit]').value;
+        if (purchase && desired && parseFloat(desired) >= 0) htmx.trigger('#calc-form', 'submit');
+      }, 600);
+    });
+    if (el.type === 'number') {
+      el.addEventListener('input', () => {
+        clearTimeout(el._inputTimer);
+        el._inputTimer = setTimeout(() => {
+          const purchase = document.querySelector('[name=purchase_amount]').value;
+          const desired  = document.querySelector('[name=desired_profit]').value;
+          if (purchase && desired && parseFloat(desired) >= 0) htmx.trigger('#calc-form', 'submit');
+        }, 800);
+      });
+    }
+  });
+</script>
+{% endblock %}

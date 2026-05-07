@@ -1,0 +1,250 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize %}
+
+{% block title %}Тарифы банков — Калькулятор ИП{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Тарифы банков</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Параметры, используемые при расчёте комиссий. Изменить можно в
+      <a href="/admin/calculator/banktariff/" class="text-blue-500 hover:underline">админке</a>.
+    </p>
+  </div>
+  <a href="{% url 'calculator:index' %}"
+     class="btn-primary text-sm">
+    ← К калькулятору
+  </a>
+</div>
+
+<!-- ══ ТАРИФЫ БАНКОВ ══ -->
+<div class="space-y-6 mb-10">
+  {% for tariff in tariffs %}
+  <div class="bg-white rounded-xl shadow-sm border {% if tariff.is_default %}border-yellow-300{% else %}border-gray-100{% endif %} overflow-hidden">
+
+    <!-- Заголовок карточки -->
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-yellow-400 flex items-center justify-center font-bold text-gray-900 text-sm">
+          {{ tariff.get_bank_display|slice:":1" }}
+        </div>
+        <div>
+          <div class="font-semibold text-gray-900">{{ tariff }}</div>
+          <div class="flex items-center gap-2 mt-0.5">
+            {% if tariff.is_default %}
+              <span class="badge-success">✓ По умолчанию</span>
+            {% endif %}
+            {% if not tariff.is_active %}
+              <span class="badge-danger">Неактивный</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if not tariff.is_default %}
+      <form method="post" action="{% url 'calculator:tariff_set_default' tariff.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="text-xs text-blue-500 hover:text-blue-700 hover:underline transition">
+          Сделать по умолчанию
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- Тело карточки -->
+    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <!-- Обслуживание -->
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Обслуживание счёта</p>
+        <div class="space-y-1 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Тариф</span>
+            <span class="font-medium {% if tariff.maintenance_fee == 0 %}text-green-600{% else %}text-gray-800{% endif %}">
+              {% if tariff.maintenance_fee == 0 %}Бесплатно
+              {% else %}{{ tariff.maintenance_fee|floatformat:0|intcomma }} ₽/мес{% endif %}
+            </span>
+          </div>
+          {% if tariff.maintenance_free_condition %}
+          <p class="text-xs text-gray-400">
+            Бесплатно если: {{ tariff.maintenance_free_condition }}
+          </p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Исходящие платежи -->
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Платёж поставщику</p>
+        <div class="space-y-1 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">В том же банке</span>
+            <span class="font-medium text-green-600">
+              {% if tariff.outgoing_same_bank_fee == 0 %}0 ₽
+              {% else %}{{ tariff.outgoing_same_bank_fee|floatformat:2|intcomma }} ₽{% endif %}
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">В другой банк</span>
+            <span class="font-medium {% if tariff.outgoing_other_bank_fee > 0 %}text-orange-600{% else %}text-green-600{% endif %}">
+              {% if tariff.outgoing_other_bank_fee == 0 %}0 ₽
+              {% else %}{{ tariff.outgoing_other_bank_fee|floatformat:2|intcomma }} ₽/операция{% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вывод на карту -->
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Вывод на личную карту</p>
+        {% if tariff.withdrawal_config %}
+          {% with cfg=tariff.withdrawal_config %}
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Бесплатный лимит</span>
+              <span class="font-medium text-green-600">
+                до {{ cfg.free_limit|default:0|floatformat:0 }} ₽/мес
+              </span>
+            </div>
+            {% if cfg.tiers %}
+            <div class="mt-1">
+              <p class="text-xs text-gray-500 mb-1">Прогрессивная шкала (сверх лимита):</p>
+              {% for tier in cfg.tiers %}
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">
+                  {% if forloop.first %}
+                    до {{ tier.up_to|default:"∞"|floatformat:0 }} ₽
+                  {% elif tier.up_to %}
+                    {{ cfg.free_limit|floatformat:0 }}+ … {{ tier.up_to|floatformat:0 }} ₽
+                  {% else %}
+                    свыше …
+                  {% endif %}
+                </span>
+                <span class="font-medium text-orange-600">{{ tier.rate }}%</span>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% if cfg.fixed_fee_per_operation %}
+            <p class="text-xs text-gray-400">+ {{ cfg.fixed_fee_per_operation }} ₽ фикс. за операцию</p>
+            {% endif %}
+          </div>
+          {% endwith %}
+        {% else %}
+          <p class="text-sm text-gray-400 italic">Не настроено</p>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% empty %}
+  <div class="bg-white rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400">
+    <p>Тарифы не добавлены.</p>
+    <a href="/admin/calculator/banktariff/add/" class="text-blue-500 text-sm hover:underline mt-2 inline-block">
+      Добавить тариф в админке →
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ══ НАСТРОЙКИ НАЛОГОВ И ВЗНОСОВ ══ -->
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900 mb-1">Настройки налогов и взносов</h2>
+  <p class="text-sm text-gray-500">
+    Изменяются в <a href="/admin/calculator/taxsettings/" class="text-blue-500 hover:underline">админке</a>.
+  </p>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for ts in tax_settings %}
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+    <div class="text-sm font-semibold text-gray-700 mb-3">{{ ts.year }} год</div>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Фикс. взносы/год</dt>
+        <dd class="font-medium text-gray-800">{{ ts.fixed_insurance_annual|floatformat:0|intcomma }} ₽</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Фикс. взносы/мес</dt>
+        <dd class="font-medium text-gray-800">≈ {{ ts.fixed_insurance_annual|floatformat:0 | divisibleby:12 }} ₽</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Порог для 1%</dt>
+        <dd class="font-medium text-gray-800">{{ ts.additional_insurance_threshold|floatformat:0|intcomma }} ₽/год</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Доп. ставка</dt>
+        <dd class="font-medium text-gray-800">{{ ts.additional_insurance_rate }}%</dd>
+      </div>
+    </dl>
+  </div>
+  {% empty %}
+  <div class="col-span-3 bg-white rounded-xl border border-dashed border-gray-200 p-8 text-center text-gray-400">
+    <p>Настройки налогов не заданы.</p>
+    <a href="/admin/calculator/taxsettings/add/" class="text-blue-500 text-sm hover:underline mt-2 inline-block">
+      Добавить настройки →
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Справочная таблица налоговых ставок -->
+<div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-100">
+    <h3 class="font-semibold text-gray-700">Ставки систем налогообложения (2026)</h3>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+          <th class="px-5 py-3">Система</th>
+          <th class="px-5 py-3">База</th>
+          <th class="px-5 py-3">Ставка</th>
+          <th class="px-5 py-3">Взносы</th>
+          <th class="px-5 py-3">Особенности</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr>
+          <td class="px-5 py-3 font-medium text-gray-800">УСН 6%</td>
+          <td class="px-5 py-3 text-gray-600">Доходы</td>
+          <td class="px-5 py-3 font-semibold text-green-600">6%</td>
+          <td class="px-5 py-3 text-gray-600">Уменьшают налог до 100% (без сотрудников)</td>
+          <td class="px-5 py-3 text-gray-500 text-xs">Минимальный налог — нет</td>
+        </tr>
+        <tr class="bg-gray-50">
+          <td class="px-5 py-3 font-medium text-gray-800">УСН 15%</td>
+          <td class="px-5 py-3 text-gray-600">Доходы − Расходы</td>
+          <td class="px-5 py-3 font-semibold text-yellow-600">15%</td>
+          <td class="px-5 py-3 text-gray-600">Включаются в расходы</td>
+          <td class="px-5 py-3 text-gray-500 text-xs">Минимальный налог 1% от дохода</td>
+        </tr>
+        <tr>
+          <td class="px-5 py-3 font-medium text-gray-800">НПД 4%</td>
+          <td class="px-5 py-3 text-gray-600">Доходы от физлиц</td>
+          <td class="px-5 py-3 font-semibold text-green-600">4%</td>
+          <td class="px-5 py-3 text-gray-600">Не обязательны</td>
+          <td class="px-5 py-3 text-gray-500 text-xs">Лимит дохода 2,4 млн ₽/год</td>
+        </tr>
+        <tr class="bg-gray-50">
+          <td class="px-5 py-3 font-medium text-gray-800">НПД 6%</td>
+          <td class="px-5 py-3 text-gray-600">Доходы от юрлиц/ИП</td>
+          <td class="px-5 py-3 font-semibold text-yellow-600">6%</td>
+          <td class="px-5 py-3 text-gray-600">Не обязательны</td>
+          <td class="px-5 py-3 text-gray-500 text-xs">Без сотрудников</td>
+        </tr>
+        <tr>
+          <td class="px-5 py-3 font-medium text-gray-800">ОСНО</td>
+          <td class="px-5 py-3 text-gray-600">Прибыль + НДС</td>
+          <td class="px-5 py-3 font-semibold text-red-600">13%+ НДС 20%</td>
+          <td class="px-5 py-3 text-gray-600">Включаются в расходы</td>
+          <td class="px-5 py-3 text-gray-500 text-xs">Ориентировочный расчёт</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,22 @@
+{% if results %}
+  {% for req in results %}
+  <li class="px-4 py-2.5 hover:bg-yellow-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
+      onclick="selectRequirement({{ req.pk }}, '{% if req.short_name %}{{ req.short_name|escapejs }}{% else %}{{ req.name|escapejs }}{% endif %} — {{ req.quantity }} {{ req.unit|escapejs }}')">
+    <div class="font-medium text-gray-800 text-sm">
+      {% if req.short_name %}{{ req.short_name }}{% else %}{{ req.name }}{% endif %}
+    </div>
+    <div class="text-xs text-gray-400">
+      {% if req.short_name %}<span class="text-gray-500">{{ req.name }}</span> · {% endif %}
+      {{ req.quantity }} {{ req.unit }}{% if req.description %} · {{ req.description|truncatechars:60 }}{% endif %}
+    </div>
+  </li>
+  {% endfor %}
+{% elif q %}
+  <li class="px-4 py-3 text-sm text-gray-400 text-center">
+    Ничего не найдено по «{{ q }}»
+    <br>
+    <a href="{% url 'calculator:requirements' %}" class="text-blue-500 hover:underline text-xs mt-1 inline-block">
+      + Добавить потребность
+    </a>
+  </li>
+{% endif %}

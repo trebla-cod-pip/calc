@@ -1,0 +1,18 @@
+{% load humanize l10n %}
+<div class="flex items-center gap-3 flex-wrap">
+  <span class="text-sm text-gray-600">
+    📊 Ежемесячный оборот:
+    <strong class="text-gray-900">
+      {% if app_settings.expected_monthly_revenue %}
+        {{ app_settings.expected_monthly_revenue|floatformat:0|intcomma }} ₽/мес
+      {% else %}
+        не задан
+      {% endif %}
+    </strong>
+  </span>
+  <button onclick="document.getElementById('revenue-edit-panel').classList.toggle('hidden')"
+          class="text-xs text-blue-500 hover:text-blue-700 transition">
+    ✏️ Изменить
+  </button>
+  <span class="text-xs text-green-600 ml-1">✓ Сохранено</span>
+</div>

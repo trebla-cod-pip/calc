@@ -1,0 +1,155 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize %}
+
+{% block title %}Сравнение поставщиков — Калькулятор ИП{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Сравнение поставщиков</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Собирайте КП в одном месте. Нажмите «Profit» — и калькулятор мгновенно покажет
+      реальную цену продажи и маржу для этого поставщика.
+    </p>
+  </div>
+  <button onclick="document.getElementById('add-form-panel').classList.toggle('hidden')"
+          class="btn-primary text-sm whitespace-nowrap">
+    + Добавить КП
+  </button>
+</div>
+
+<!-- ══ ФОРМА ДОБАВЛЕНИЯ ══ -->
+<div id="add-form-panel" class="{% if not form.errors %}hidden{% endif %} mb-6">
+  <div class="bg-white rounded-xl shadow-sm border border-yellow-200 p-5">
+    <h2 class="font-semibold text-gray-700 mb-4">📋 Новое коммерческое предложение</h2>
+
+    <!-- Ошибки валидации (HTMX заменит этот div) -->
+    <div id="vendor-form-errors"></div>
+
+    <form id="vendor-form"
+          hx-post="{% url 'calculator:vendor_add' %}"
+          hx-target="#vendor-tbody"
+          hx-swap="innerHTML"
+          hx-include="#quantity-input"
+          hx-on::after-request="
+            if(event.detail.successful){
+              this.reset();
+              document.getElementById('vendor-form-errors').innerHTML = '';
+              document.getElementById('add-form-panel').classList.add('hidden');
+              document.getElementById('vendor-empty-state').classList.add('hidden');
+              document.getElementById('vendor-table-wrap').classList.remove('hidden');
+            }
+          "
+          hx-indicator="#form-spinner">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <div class="lg:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.name.label }}</label>
+          {{ form.name }}
+          {% if form.name.errors %}<p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.unit_price.label }}</label>
+          {{ form.unit_price }}
+          {% if form.unit_price.errors %}<p class="text-red-500 text-xs mt-1">{{ form.unit_price.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.shipping_cost.label }}</label>
+          {{ form.shipping_cost }}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.delivery_days.label }}</label>
+          {{ form.delivery_days }}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.document_url.label }}</label>
+          {{ form.document_url }}
+        </div>
+
+        <div class="sm:col-span-2 lg:col-span-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.comment.label }}</label>
+          {{ form.comment }}
+        </div>
+
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button type="submit" class="btn-primary text-sm flex items-center gap-2">
+          <span id="form-spinner" class="htmx-indicator animate-spin">⟳</span>
+          Сохранить
+        </button>
+        <button type="button"
+                onclick="document.getElementById('add-form-panel').classList.add('hidden')"
+                class="text-sm text-gray-500 hover:text-gray-700 transition">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ ПАНЕЛЬ УПРАВЛЕНИЯ КОЛИЧЕСТВОМ ══ -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-4 mb-4 flex items-center gap-4 flex-wrap">
+  <div class="flex items-center gap-3">
+    <label class="text-sm font-medium text-gray-700 whitespace-nowrap">
+      📦 Количество товара для закупки:
+    </label>
+    <input id="quantity-input"
+           name="quantity"
+           type="number"
+           value="{{ quantity }}"
+           min="1"
+           class="form-input w-28 text-center"
+           hx-get="{% url 'calculator:vendor_table' %}"
+           hx-target="#vendor-tbody"
+           hx-swap="innerHTML"
+           hx-trigger="keyup changed delay:500ms, change"
+           hx-include="this">
+    <span class="text-sm text-gray-400">шт.</span>
+  </div>
+  {% if total_count > 0 %}
+  <div class="ml-auto flex items-center gap-3 text-xs text-gray-400">
+    <span class="badge-success">Зелёный — мин. цена</span>
+    <span class="badge-danger">Красный — макс. цена</span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ══ ТАБЛИЦА КП ══ -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <div id="vendor-empty-state" class="{% if total_count > 0 %}hidden{% endif %} p-12 text-center text-gray-400">
+    <div class="text-5xl mb-4">📂</div>
+    <p class="text-base font-medium mb-1">КП ещё не добавлены</p>
+    <p class="text-sm">Нажмите «+ Добавить КП» и занесите данные от первого поставщика</p>
+  </div>
+  <div class="overflow-x-auto {% if total_count == 0 %}hidden{% endif %}" id="vendor-table-wrap">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
+          <th class="px-4 py-3">Поставщик</th>
+          <th class="px-4 py-3 text-right">Цена/шт, ₽</th>
+          <th class="px-4 py-3 text-right">Доставка, ₽</th>
+          <th class="px-4 py-3 text-right">
+            Итого, ₽
+            <span data-tooltip="unit_price × количество + доставка" class="text-gray-400 cursor-help">ⓘ</span>
+          </th>
+          <th class="px-4 py-3 text-center">Срок, дн.</th>
+          <th class="px-4 py-3">КП / Ссылка</th>
+          <th class="px-4 py-3">Комментарий</th>
+          <th class="px-4 py-3 text-center">Действия</th>
+        </tr>
+      </thead>
+      <tbody id="vendor-tbody" class="divide-y divide-gray-100">
+        {% include "calculator/partials/vendor_table_body.html" %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
