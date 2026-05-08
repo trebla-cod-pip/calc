@@ -1,0 +1,81 @@
+{% url 'calculator:offer_add' req_pk as offer_add_url %}
+<form id="offer-modal-form"
+      hx-post="{{ offer_add_url }}"
+      hx-target="#offer-modal-inner"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+
+  <!-- Ошибки -->
+  {% if form.errors %}
+  <div id="offer-modal-errors"
+       style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;
+              padding:10px 12px;margin-bottom:14px;font-size:13px;color:#b91c1c">
+    {% for field in form %}
+      {% for error in field.errors %}<div>{{ field.label }}: {{ error }}</div>{% endfor %}
+    {% endfor %}
+    {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+  {% else %}
+  <div id="offer-modal-errors"></div>
+  {% endif %}
+
+  <!-- Поставщик -->
+  <div style="margin-bottom:12px">
+    <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px">
+      Поставщик <span style="color:#ef4444">*</span>
+    </label>
+    <input name="supplier_name" type="text" id="om-supplier"
+           value="{{ form.supplier_name.value|default:'' }}"
+           placeholder="ООО Ромашка / Wildberries / Alibaba" required
+           class="form-input" style="width:100%;box-sizing:border-box">
+  </div>
+
+  <!-- Цена / срок -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div>
+      <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px">
+        Цена за ед., ₽ <span style="color:#ef4444">*</span>
+      </label>
+      <input name="price_per_unit" type="number" step="0.01" min="0" id="om-price"
+             value="{{ form.price_per_unit.value|default:'' }}"
+             placeholder="1500.00" required
+             class="form-input" style="width:100%;box-sizing:border-box">
+    </div>
+    <div>
+      <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px">
+        Срок, дн.
+      </label>
+      <input name="delivery_days" type="number" min="0" id="om-days"
+             value="{{ form.delivery_days.value|default:'' }}"
+             placeholder="7"
+             class="form-input" style="width:100%;box-sizing:border-box">
+    </div>
+  </div>
+
+  <!-- Ссылка -->
+  <div style="margin-bottom:12px">
+    <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px">
+      Ссылка
+    </label>
+    <input name="link" type="url" id="om-link"
+           value="{{ form.link.value|default:'' }}"
+           placeholder="https://..."
+           class="form-input" style="width:100%;box-sizing:border-box">
+  </div>
+
+  <!-- Комментарий -->
+  <div style="margin-bottom:16px">
+    <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px">
+      Комментарий
+    </label>
+    <textarea name="comment" id="om-comment" rows="2"
+              placeholder="Доп. условия, контакты…"
+              class="form-input" style="width:100%;box-sizing:border-box;resize:vertical">{{ form.comment.value|default:'' }}</textarea>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px">
+    <button type="submit" class="btn-primary text-sm">Сохранить КП</button>
+    <button type="button" onclick="closeOfferModal()"
+            class="text-sm text-gray-500 hover:text-gray-700 transition">Отмена</button>
+  </div>
+</form>

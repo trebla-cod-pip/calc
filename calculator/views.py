@@ -15,6 +15,7 @@ from decimal import Decimal
 
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.template.loader import render_to_string
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 
@@ -776,6 +777,29 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
 
     breakdown_json = json.dumps(breakdown, ensure_ascii=False)
 
+    # Денежное правило — сколько откладывать с каждых 1 000 ₽ выручки
+    _rev  = float(agg["total_revenue"] or 0)
+    _tax  = float(agg["total_tax"]     or 0)
+    _bank = float(agg["total_bank"]    or 0)
+    _ins  = float(agg["total_insurance"] or 0)
+    _oth  = float(agg["total_other"]   or 0)
+    _cost = float(agg["total_cost"]    or 0)
+    _profit = float(total_net_profit)
+
+    if _rev > 0:
+        money_rule = {
+            "tax_per_1k":      round(_tax  / _rev * 1000, 1),   # налог на 1 000 ₽
+            "ins_per_1k":      round(_ins  / _rev * 1000, 1),   # взносы на 1 000 ₽
+            "bank_per_1k":     round(_bank / _rev * 1000, 1),   # банк на 1 000 ₽
+            "profit_per_1k":   round(_profit / _rev * 1000, 1), # прибыль на 1 000 ₽
+            "expense_pct":     round((_rev - _profit) / _rev * 100, 1),
+            "profit_pct":      round(_profit / _rev * 100, 1),
+            # Резерв = налог + взносы (то что нужно откладывать «живыми» деньгами)
+            "reserve_per_1k":  round((_tax + _ins) / _rev * 1000, 1),
+        }
+    else:
+        money_rule = None
+
     # Лучшая сделка
     best_deal, best_profit = None, None
     for d in active_qs:
@@ -793,6 +817,7 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
         "best_profit":    best_profit,
         "deal_statuses":  Deal.STATUS_CHOICES,
         "status_counts":  {s: deals_qs.filter(status=s).count() for s, _ in Deal.STATUS_CHOICES},
+        "money_rule":     money_rule,
     })
 
 
@@ -803,3 +828,40 @@ def supplier_offer_delete(request: HttpRequest, pk: int) -> HttpResponse:
     offer.delete()
     return render(request, "calculator/partials/all_offers.html",
                   _build_offers_context())
+
+
+@require_http_methods(["POST"])
+def offer_add(request: HttpRequest, req_pk: int) -> HttpResponse:
+    """
+    HTMX-добавление КП прямо со страницы потребностей (попап).
+    На успех возвращает обновлённую строку потребности (OOB-swap)
+    и сигнал closeOfferModal для закрытия попапа.
+    """
+    req = get_object_or_404(Requirement, pk=req_pk)
+    data = request.POST.copy()
+    data["requirement"] = str(req_pk)
+    form = SupplierOfferForm(data)
+    if form.is_valid():
+        form.save()
+        req.refresh_from_db()
+        row_html = render_to_string(
+            "calculator/partials/requirement_row.html",
+            {"req": req},
+            request=request,
+        )
+        # inject hx-swap-oob so HTMX swaps the row out-of-band
+        row_html = row_html.replace(
+            f'id="req-row-{req_pk}"',
+            f'id="req-row-{req_pk}" hx-swap-oob="outerHTML"',
+            1,
+        )
+        body = f'<div id="offer-modal-inner"></div>\n{row_html}'
+        resp = HttpResponse(body, content_type="text/html")
+        resp["HX-Trigger"] = "closeOfferModal"
+        return resp
+    return render(
+        request,
+        "calculator/partials/offer_modal_inner.html",
+        {"form": form, "req": req, "req_pk": req_pk},
+        status=422,
+    )

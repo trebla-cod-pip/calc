@@ -26,6 +26,7 @@ urlpatterns = [
     path("offers/search/", views.search_requirements, name="search_requirements"),
     path("offers/<int:pk>/edit/", views.offer_edit, name="offer_edit"),
     path("offers/<int:pk>/delete/", views.supplier_offer_delete, name="supplier_offer_delete"),
+    path("offers/add/<int:req_pk>/", views.offer_add, name="offer_add"),
 
     # Поставки
     path("deliveries/", views.delivery_list, name="delivery_list"),

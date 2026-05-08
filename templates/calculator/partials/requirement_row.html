@@ -44,12 +44,13 @@
   <td class="px-4 py-3">
     <div class="flex items-center justify-center gap-1.5">
       <!-- Создать КП -->
-      <a href="{% url 'calculator:offers_list' %}?req={{ req.pk }}"
-         title="Добавить КП к этой потребности"
-         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-500
-                text-gray-900 text-xs font-semibold transition whitespace-nowrap">
+      <button type="button"
+              onclick="openOfferModal({{ req.pk }}, '{{ req.short_name|default:req.name|escapejs }}')"
+              title="Добавить КП к этой потребности"
+              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-500
+                     text-gray-900 text-xs font-semibold transition whitespace-nowrap">
         ➕ Создать КП
-      </a>
+      </button>
       <!-- Сравнить -->
       {% if req.offers.count > 0 %}
       <a href="{% url 'calculator:offers_list' %}?req={{ req.pk }}"
