@@ -613,11 +613,13 @@ def deal_delete(request: HttpRequest, pk: int) -> HttpResponse:
 
 def deal_analytics(request: HttpRequest) -> HttpResponse:
     """Страница аналитики по сделкам."""
-    from django.db.models import Sum, Count, Avg, Q
-    from datetime import date, timedelta
+    import json
+    from django.db.models import Sum, Count
+    from django.db.models.functions import TruncMonth
+    from datetime import date
 
     period = request.GET.get("period", "all")
-    today = date.today()
+    today  = date.today()
     deals_qs = Deal.objects.all()
 
     if period == "month":
@@ -628,7 +630,9 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
     elif period == "year":
         deals_qs = deals_qs.filter(created_at__year=today.year)
 
-    agg = deals_qs.exclude(status=Deal.STATUS_CANCELLED).aggregate(
+    active_qs = deals_qs.exclude(status=Deal.STATUS_CANCELLED)
+
+    agg = active_qs.aggregate(
         total_revenue=Sum("revenue"),
         total_cost=Sum("cost_price"),
         total_tax=Sum("tax_amount"),
@@ -638,11 +642,20 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
         count=Count("id"),
     )
 
-    # Чистая прибыль по месяцам (для графика) — последние 12 месяцев
-    from django.db.models.functions import TruncMonth
-    monthly = (
-        Deal.objects
-        .exclude(status=Deal.STATUS_CANCELLED)
+    # Считаем чистую прибыль в Python (Decimal-safe)
+    def _d(v): return v or Decimal("0")
+    total_net_profit = (
+        _d(agg["total_revenue"])
+        - _d(agg["total_cost"])
+        - _d(agg["total_tax"])
+        - _d(agg["total_bank"])
+        - _d(agg["total_insurance"])
+        - _d(agg["total_other"])
+    )
+
+    # Данные по месяцам — конвертируем Decimal → float для JSON
+    monthly_raw = (
+        active_qs
         .annotate(month=TruncMonth("created_at"))
         .values("month")
         .annotate(
@@ -655,27 +668,56 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
         )
         .order_by("month")
     )
+    monthly_json = json.dumps([
+        {
+            "month": row["month"].strftime("%Y-%m-01") if row["month"] else "",
+            "revenue":  float(row["revenue"]  or 0),
+            "cost":     float(row["cost"]     or 0),
+            "tax":      float(row["tax"]      or 0),
+            "bank":     float(row["bank"]     or 0),
+            "insurance":float(row["insurance"]or 0),
+            "other":    float(row["other"]    or 0),
+        }
+        for row in monthly_raw
+    ], ensure_ascii=False)
 
-    # Лучшая сделка по прибыли (revenue - all costs)
-    best_deal = None
-    best_profit = None
-    for d in deals_qs.exclude(status=Deal.STATUS_CANCELLED):
+    # Разбивка по сделкам для попапа — {field: [{title, pk, value}]}
+    breakdown_fields = {
+        "cost":      ("cost_price",       "Себестоимость"),
+        "tax":       ("tax_amount",       "Налог"),
+        "bank":      ("bank_commission",  "Комиссия банка"),
+        "insurance": ("insurance_amount", "Страховые взносы"),
+        "other":     ("other_expenses",   "Прочие расходы"),
+        "revenue":   ("revenue",          "Выручка"),
+    }
+    breakdown = {}
+    for key, (field, label) in breakdown_fields.items():
+        rows = []
+        for d in active_qs.order_by("-" + field):
+            val = getattr(d, field) or Decimal("0")
+            if val:
+                rows.append({"title": d.title, "pk": d.pk, "value": float(val)})
+        breakdown[key] = {"label": label, "rows": rows}
+
+    breakdown_json = json.dumps(breakdown, ensure_ascii=False)
+
+    # Лучшая сделка
+    best_deal, best_profit = None, None
+    for d in active_qs:
         p = d.net_profit
         if best_profit is None or p > best_profit:
-            best_profit = p
-            best_deal = d
+            best_profit, best_deal = p, d
 
     return render(request, "calculator/deals/analytics.html", {
-        "agg": agg,
-        "monthly": list(monthly),
-        "period": period,
-        "best_deal": best_deal,
-        "best_profit": best_profit,
-        "deal_statuses": Deal.STATUS_CHOICES,
-        "status_counts": {
-            s: deals_qs.filter(status=s).count()
-            for s, _ in Deal.STATUS_CHOICES
-        },
+        "agg":            agg,
+        "total_net_profit": total_net_profit,
+        "monthly_json":   monthly_json,
+        "breakdown_json": breakdown_json,
+        "period":         period,
+        "best_deal":      best_deal,
+        "best_profit":    best_profit,
+        "deal_statuses":  Deal.STATUS_CHOICES,
+        "status_counts":  {s: deals_qs.filter(status=s).count() for s, _ in Deal.STATUS_CHOICES},
     })
 
 

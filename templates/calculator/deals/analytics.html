@@ -6,26 +6,33 @@
 
 {% block content %}
 <style>
-  .metric-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
-                 padding:16px 18px;box-shadow:var(--shadow-sm); }
+  .metric-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-sm); }
   .metric-label { font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em; }
-  .metric-val { font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;
-                color:var(--text);margin-top:6px;font-family:'IBM Plex Mono',monospace;line-height:1.1; }
+  .metric-val { font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);margin-top:6px;font-family:'IBM Plex Mono',monospace;line-height:1.1; }
   .metric-sub { font-size:12px;color:var(--text-3);margin-top:4px; }
   .metrics-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px; }
-  .expenses-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px; }
-  .chart-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
-                padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px; }
-  .chart-title { font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px; }
-  .period-tab { display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;
-                font-size:12px;font-weight:500;text-decoration:none;color:var(--text-2);
-                border:1px solid transparent;transition:all .12s; }
+  .chart-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px; }
+  .period-tab { display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:500;text-decoration:none;color:var(--text-2);border:1px solid transparent;transition:all .12s; }
   .period-tab:hover { background:var(--surface-2);border-color:var(--border); }
   .period-tab.active { background:var(--primary-soft);color:var(--primary);border-color:var(--primary-soft2); }
-  .exp-row { display:flex;align-items:center;justify-content:space-between;
-             padding:9px 13px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border);margin-bottom:6px; }
+  .exp-row { display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border);margin-bottom:6px;cursor:pointer;transition:background .12s; }
+  .exp-row:hover { background:var(--primary-soft);border-color:var(--primary-soft2); }
   .exp-label { font-size:13px;color:var(--text-2); }
   .exp-val { font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text);font-weight:500;font-variant-numeric:tabular-nums; }
+  /* Modal */
+  .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal-box { background:var(--surface);border-radius:var(--r-xl);box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;margin:16px; }
+  .modal-head { padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
+  .modal-title { font-size:15px;font-weight:600;color:var(--text); }
+  .modal-close { width:28px;height:28px;border-radius:var(--r);border:none;background:var(--surface-2);color:var(--text-2);font-size:16px;cursor:pointer;display:grid;place-items:center; }
+  .modal-body { overflow-y:auto;padding:12px 16px 16px; }
+  .modal-row { display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 10px;border-radius:var(--r);margin-bottom:4px; }
+  .modal-row:nth-child(odd) { background:var(--surface-2); }
+  .modal-deal-name { font-size:13px;color:var(--text); }
+  .modal-deal-name a { color:var(--primary);text-decoration:none; }
+  .modal-deal-val { font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--text);white-space:nowrap; }
+  .modal-total { display:flex;align-items:center;justify-content:space-between;padding:10px 10px;border-top:1px solid var(--border);margin-top:8px;font-weight:600;font-size:13px; }
 </style>
 
 <!-- Шапка -->
@@ -34,10 +41,7 @@
     <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--text)">Аналитика сделок</h1>
     <div style="font-size:12px;color:var(--text-3);margin-top:3px">Финансовый итог по всем сохранённым сделкам</div>
   </div>
-  <a href="{% url 'calculator:deal_list' %}"
-     style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 16px;
-            border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);
-            color:var(--text);font-size:13px;font-weight:500;text-decoration:none">
+  <a href="{% url 'calculator:deal_list' %}" style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 16px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:13px;font-weight:500;text-decoration:none">
     ← Все сделки
   </a>
 </div>
@@ -50,9 +54,7 @@
   <a href="?period=year"    class="period-tab {% if period == 'year' %}active{% endif %}">Этот год</a>
 </div>
 
-{% with rev=agg.total_revenue|default:0 cost=agg.total_cost|default:0 tax=agg.total_tax|default:0 bank=agg.total_bank|default:0 ins=agg.total_insurance|default:0 oth=agg.total_other|default:0 %}
-
-<!-- Метрики верхнего уровня -->
+<!-- Метрики -->
 <div class="metrics-grid">
   <div class="metric-card">
     <div class="metric-label">Сделок</div>
@@ -61,49 +63,52 @@
   </div>
   <div class="metric-card">
     <div class="metric-label">Выручка</div>
-    <div class="metric-val" style="font-size:20px">{{ rev|floatformat:0|intcomma }} ₽</div>
+    <div class="metric-val">{{ agg.total_revenue|default:0|floatformat:0|intcomma }} ₽</div>
     <div class="metric-sub">итого получено</div>
   </div>
   <div class="metric-card">
     <div class="metric-label">Себестоимость</div>
-    <div class="metric-val" style="font-size:20px">{{ cost|floatformat:0|intcomma }} ₽</div>
+    <div class="metric-val">{{ agg.total_cost|default:0|floatformat:0|intcomma }} ₽</div>
     <div class="metric-sub">затраты на закупку</div>
   </div>
-  <div class="metric-card" style="border-color:{% if rev and rev > cost %}#bbf7d0{% else %}#fca5a5{% endif %};
-       background:{% if rev and rev > cost %}var(--good-soft){% else %}var(--danger-soft){% endif %}">
+  <div class="metric-card" style="border-color:{% if total_net_profit >= 0 %}#bbf7d0{% else %}#fca5a5{% endif %};background:{% if total_net_profit >= 0 %}var(--good-soft){% else %}var(--danger-soft){% endif %}">
     <div class="metric-label">Чистая прибыль</div>
-    <div class="metric-val" style="font-size:20px;color:{% if rev and rev > cost %}var(--good){% else %}var(--danger){% endif %}">
-      {{ rev|add:"-0"|floatformat:0|intcomma }} ₽
+    <div class="metric-val" style="color:{% if total_net_profit >= 0 %}var(--good){% else %}var(--danger){% endif %}">
+      {{ total_net_profit|floatformat:0|intcomma }} ₽
     </div>
     <div class="metric-sub">выручка − все расходы</div>
   </div>
 </div>
 
-<!-- Структура расходов -->
-<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
-            padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px">
-  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px">Структура расходов</div>
+<!-- Структура расходов — кликабельные строки -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px">
+  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Структура расходов</div>
+  <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">Нажмите на строку, чтобы увидеть разбивку по сделкам</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div>
-      <div class="exp-row">
-        <span class="exp-label">Себестоимость</span>
-        <span class="exp-val">{{ cost|floatformat:0|intcomma }} ₽</span>
+      <div class="exp-row" onclick="showBreakdown('revenue')">
+        <span class="exp-label">💰 Выручка</span>
+        <span class="exp-val">{{ agg.total_revenue|default:0|floatformat:0|intcomma }} ₽</span>
       </div>
-      <div class="exp-row">
-        <span class="exp-label">Налог</span>
-        <span class="exp-val">{{ tax|floatformat:0|intcomma }} ₽</span>
+      <div class="exp-row" onclick="showBreakdown('cost')">
+        <span class="exp-label">📦 Себестоимость</span>
+        <span class="exp-val">{{ agg.total_cost|default:0|floatformat:0|intcomma }} ₽</span>
       </div>
-      <div class="exp-row">
-        <span class="exp-label">Комиссия банка</span>
-        <span class="exp-val">{{ bank|floatformat:0|intcomma }} ₽</span>
+      <div class="exp-row" onclick="showBreakdown('tax')">
+        <span class="exp-label">🏛️ Налог</span>
+        <span class="exp-val">{{ agg.total_tax|default:0|floatformat:0|intcomma }} ₽</span>
       </div>
-      <div class="exp-row">
-        <span class="exp-label">Страховые взносы</span>
-        <span class="exp-val">{{ ins|floatformat:0|intcomma }} ₽</span>
+      <div class="exp-row" onclick="showBreakdown('bank')">
+        <span class="exp-label">🏦 Комиссия банка</span>
+        <span class="exp-val">{{ agg.total_bank|default:0|floatformat:0|intcomma }} ₽</span>
       </div>
-      <div class="exp-row">
-        <span class="exp-label">Прочие расходы</span>
-        <span class="exp-val">{{ oth|floatformat:0|intcomma }} ₽</span>
+      <div class="exp-row" onclick="showBreakdown('insurance')">
+        <span class="exp-label">🛡️ Страховые взносы</span>
+        <span class="exp-val">{{ agg.total_insurance|default:0|floatformat:0|intcomma }} ₽</span>
+      </div>
+      <div class="exp-row" onclick="showBreakdown('other')">
+        <span class="exp-label">➕ Прочие расходы</span>
+        <span class="exp-val">{{ agg.total_other|default:0|floatformat:0|intcomma }} ₽</span>
       </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:center">
@@ -113,13 +118,11 @@
 </div>
 
 <!-- Статусы -->
-<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
-            padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px">
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px">
   <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px">По статусам</div>
   <div style="display:flex;flex-wrap:wrap;gap:10px">
     {% for status_val, count in status_counts.items %}
-    <div style="flex:1;min-width:100px;padding:12px 14px;border-radius:var(--r-lg);
-                background:var(--surface-2);border:1px solid var(--border);text-align:center">
+    <div style="flex:1;min-width:100px;padding:12px 14px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--border);text-align:center">
       <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)">{{ count }}</div>
       <div style="font-size:11px;color:var(--text-3);margin-top:4px">
         {% for val, label in deal_statuses %}{% if val == status_val %}{{ label }}{% endif %}{% endfor %}
@@ -130,41 +133,38 @@
 </div>
 
 <!-- График по месяцам -->
-{% if monthly %}
 <div class="chart-card">
-  <div class="chart-title">Выручка и прибыль по месяцам</div>
-  <canvas id="bar-chart" height="120"></canvas>
+  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px">Выручка и прибыль по месяцам</div>
+  <canvas id="bar-chart" height="100"></canvas>
 </div>
-{% endif %}
 
 <!-- Лучшая сделка -->
 {% if best_deal %}
-<div style="background:var(--good-soft);border:1px solid #bbf7d0;border-radius:var(--r-lg);
-            padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+<div style="background:var(--good-soft);border:1px solid #bbf7d0;border-radius:var(--r-lg);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
   <div>
-    <div style="font-size:11px;font-weight:600;color:var(--good);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">
-      🏆 Лучшая сделка
-    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--good);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">🏆 Лучшая сделка</div>
     <div style="font-size:15px;font-weight:600;color:var(--text)">{{ best_deal.title }}</div>
-    {% if best_deal.client_name %}
-    <div style="font-size:12px;color:var(--text-3)">{{ best_deal.client_name }}</div>
-    {% endif %}
+    {% if best_deal.client_name %}<div style="font-size:12px;color:var(--text-3)">{{ best_deal.client_name }}</div>{% endif %}
   </div>
   <div style="text-align:right">
-    <div style="font-size:24px;font-weight:700;color:var(--good);font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
-      {{ best_profit|floatformat:0|intcomma }} ₽
-    </div>
+    <div style="font-size:24px;font-weight:700;color:var(--good);font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ best_profit|floatformat:0|intcomma }} ₽</div>
     <div style="font-size:12px;color:var(--text-3)">чистая прибыль</div>
   </div>
-  <a href="{% url 'calculator:deal_detail' best_deal.pk %}"
-     style="display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:var(--r);
-            background:var(--good);color:white;font-size:13px;font-weight:500;text-decoration:none">
-    Открыть →
-  </a>
+  <a href="{% url 'calculator:deal_detail' best_deal.pk %}" style="display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:var(--r);background:var(--good);color:white;font-size:13px;font-weight:500;text-decoration:none">Открыть →</a>
 </div>
 {% endif %}
 
-{% endwith %}
+<!-- ══ Попап ══ -->
+<div id="modal-overlay" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Разбивка</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -173,66 +173,85 @@
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
   Chart.defaults.color = '#6b6b6b';
 
-  // Пирог — структура расходов
+  const fmt = n => new Intl.NumberFormat('ru-RU', {maximumFractionDigits:0}).format(n) + ' ₽';
+
+  // ── Пирог ────────────────────────────────────────────
   const pieCtx = document.getElementById('pie-chart');
   if (pieCtx) {
-    const cost = {{ agg.total_cost|default:0|floatformat:2 }};
-    const tax  = {{ agg.total_tax|default:0|floatformat:2 }};
-    const bank = {{ agg.total_bank|default:0|floatformat:2 }};
-    const ins  = {{ agg.total_insurance|default:0|floatformat:2 }};
-    const oth  = {{ agg.total_other|default:0|floatformat:2 }};
+    const cost = {{ agg.total_cost|default:0|unlocalize }};
+    const tax  = {{ agg.total_tax|default:0|unlocalize }};
+    const bank = {{ agg.total_bank|default:0|unlocalize }};
+    const ins  = {{ agg.total_insurance|default:0|unlocalize }};
+    const oth  = {{ agg.total_other|default:0|unlocalize }};
     new Chart(pieCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Себестоимость', 'Налог', 'Банк', 'Взносы', 'Прочее'],
-        datasets: [{
-          data: [cost, tax, bank, ins, oth],
-          backgroundColor: ['#2563eb','#f59e0b','#10b981','#6366f1','#9b9b9b'],
-          borderWidth: 0,
-          hoverOffset: 6,
-        }]
+        labels: ['Себестоимость','Налог','Банк','Взносы','Прочее'],
+        datasets: [{ data:[cost,tax,bank,ins,oth], backgroundColor:['#2563eb','#f59e0b','#10b981','#6366f1','#9b9b9b'], borderWidth:0, hoverOffset:6 }]
       },
-      options: {
-        cutout: '65%',
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } } },
-      }
+      options: { cutout:'65%', plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, padding:12, font:{size:11} } } } }
     });
   }
 
-  // Столбчатый — по месяцам
+  // ── Столбчатый ───────────────────────────────────────
   const barCtx = document.getElementById('bar-chart');
   if (barCtx) {
-    const monthly = {{ monthly|safe }};
-    const labels = monthly.map(m => {
-      if (!m.month) return '';
-      const d = new Date(m.month);
-      return d.toLocaleString('ru-RU', { month: 'short', year: '2-digit' });
-    });
-    const revenues = monthly.map(m => parseFloat(m.revenue || 0));
-    const profits  = monthly.map(m => {
-      const r = parseFloat(m.revenue || 0);
-      const c = parseFloat(m.cost || 0) + parseFloat(m.tax || 0)
-                + parseFloat(m.bank || 0) + parseFloat(m.insurance || 0)
-                + parseFloat(m.other || 0);
-      return r - c;
-    });
-    new Chart(barCtx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Выручка', data: revenues, backgroundColor: '#dbeafe', borderRadius: 4 },
-          { label: 'Прибыль', data: profits,  backgroundColor: '#86efac', borderRadius: 4 },
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } } },
-        scales: {
-          y: { ticks: { callback: v => new Intl.NumberFormat('ru-RU',{notation:'compact'}).format(v) + ' ₽' } }
+    const monthly = {{ monthly_json }};
+    const labels   = monthly.map(m => { const d=new Date(m.month); return d.toLocaleString('ru-RU',{month:'short',year:'2-digit'}); });
+    const revenues = monthly.map(m => m.revenue);
+    const profits  = monthly.map(m => m.revenue - m.cost - m.tax - m.bank - m.insurance - m.other);
+    if (monthly.length) {
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label:'Выручка', data:revenues, backgroundColor:'#dbeafe', borderRadius:4 },
+            { label:'Прибыль', data:profits,  backgroundColor:'#86efac', borderRadius:4 },
+          ]
+        },
+        options: {
+          responsive:true,
+          plugins:{ legend:{ position:'top', labels:{ boxWidth:10, font:{size:11} } } },
+          scales:{ y:{ ticks:{ callback: v => new Intl.NumberFormat('ru-RU',{notation:'compact'}).format(v)+' ₽' } } }
         }
-      }
-    });
+      });
+    } else {
+      barCtx.parentElement.innerHTML += '<div style="text-align:center;color:var(--text-3);padding:24px;font-size:13px">Нет данных для графика</div>';
+      barCtx.remove();
+    }
   }
+
+  // ── Попап ─────────────────────────────────────────────
+  const breakdown = {{ breakdown_json }};
+
+  function showBreakdown(key) {
+    const data = breakdown[key];
+    if (!data) return;
+    document.getElementById('modal-title').textContent = data.label + ' — по сделкам';
+    const rows = data.rows;
+    if (!rows.length) {
+      document.getElementById('modal-body').innerHTML = '<div style="text-align:center;color:var(--text-3);padding:24px;font-size:13px">Нет данных</div>';
+    } else {
+      let total = 0;
+      let html = '';
+      rows.forEach((r, i) => {
+        total += r.value;
+        html += `<div class="modal-row">
+          <div class="modal-deal-name"><a href="/calculator/deals/${r.pk}/" target="_blank">${r.title}</a></div>
+          <div class="modal-deal-val">${fmt(r.value)}</div>
+        </div>`;
+      });
+      html += `<div class="modal-total"><span>Итого</span><span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">${fmt(total)}</span></div>`;
+      document.getElementById('modal-body').innerHTML = html;
+    }
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
 {% endblock %}
