@@ -323,9 +323,24 @@ class Deal(models.Model):
     insurance_amount    = models.DecimalField("Страховые взносы, ₽",max_digits=14, decimal_places=2, default=0)
     other_expenses      = models.DecimalField("Прочие расходы, ₽",  max_digits=14, decimal_places=2, default=0)
 
+    # Налоговая система и начисленный налог до вычета (для расшифровки в аналитике)
+    tax_system  = models.CharField("Система налогообложения", max_length=20, blank=True)
+    gross_tax   = models.DecimalField(
+        "Начисленный налог (до вычета), ₽",
+        max_digits=14, decimal_places=2, default=0,
+        help_text="Налог до вычета страховых взносов",
+    )
     comment    = models.TextField("Комментарий", blank=True)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлено", auto_now=True)
+
+    TAX_SYSTEM_LABELS = {
+        "usn6":         "УСН 6%",
+        "usn15":        "УСН 15%",
+        "npd_individual": "НПД 4%",
+        "npd_legal":    "НПД 6%",
+        "osno":         "ОСНО",
+    }
 
     class Meta:
         verbose_name = "Сделка"

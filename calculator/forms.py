@@ -391,8 +391,9 @@ class DealForm(forms.ModelForm):
         fields = [
             "title", "client_name", "invoice_number", "status",
             "purchase_date", "delivery_date", "payment_date",
-            "revenue", "cost_price", "tax_amount", "bank_commission",
-            "insurance_amount", "other_expenses", "comment",
+            "revenue", "cost_price", "tax_amount", "gross_tax",
+            "bank_commission", "insurance_amount", "other_expenses",
+            "tax_system", "comment",
         ]
         widgets = {
             "title": forms.TextInput(attrs={
@@ -414,6 +415,8 @@ class DealForm(forms.ModelForm):
             "bank_commission":   forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
             "insurance_amount":  forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
             "other_expenses":    forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "gross_tax":         forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "tax_system":        forms.HiddenInput(),
             "comment": forms.Textarea(attrs={"class": "form-input", "rows": 2, "placeholder": "Дополнительные заметки…"}),
         }
         labels = {

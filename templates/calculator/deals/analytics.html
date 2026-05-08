@@ -196,7 +196,7 @@
   // ── Столбчатый ───────────────────────────────────────
   const barCtx = document.getElementById('bar-chart');
   if (barCtx) {
-    const monthly = {{ monthly_json }};
+    const monthly = {{ monthly_json|safe }};
     const labels   = monthly.map(m => { const d=new Date(m.month); return d.toLocaleString('ru-RU',{month:'short',year:'2-digit'}); });
     const revenues = monthly.map(m => m.revenue);
     const profits  = monthly.map(m => m.revenue - m.cost - m.tax - m.bank - m.insurance - m.other);
@@ -223,7 +223,11 @@
   }
 
   // ── Попап ─────────────────────────────────────────────
-  const breakdown = {{ breakdown_json }};
+  const breakdown = {{ breakdown_json|safe }};
+
+  const TAX_LABELS = {
+    usn6:'УСН 6%', usn15:'УСН 15%', npd_individual:'НПД 4%', npd_legal:'НПД 6%', osno:'ОСНО'
+  };
 
   function showBreakdown(key) {
     const data = breakdown[key];
@@ -231,18 +235,36 @@
     document.getElementById('modal-title').textContent = data.label + ' — по сделкам';
     const rows = data.rows;
     if (!rows.length) {
-      document.getElementById('modal-body').innerHTML = '<div style="text-align:center;color:var(--text-3);padding:24px;font-size:13px">Нет данных</div>';
+      document.getElementById('modal-body').innerHTML =
+        '<div style="text-align:center;color:var(--text-3);padding:24px;font-size:13px">Нет данных</div>';
     } else {
       let total = 0;
       let html = '';
-      rows.forEach((r, i) => {
+      rows.forEach(r => {
         total += r.value;
-        html += `<div class="modal-row">
-          <div class="modal-deal-name"><a href="/calculator/deals/${r.pk}/" target="_blank">${r.title}</a></div>
+        let extra = '';
+        if (key === 'tax' && r.gross_tax > 0) {
+          const sys   = TAX_LABELS[r.tax_system] || r.tax_system || '';
+          const ded   = r.tax_deduction > 0 ? r.tax_deduction : 0;
+          extra = `<div style="font-size:11px;color:var(--text-3);margin-top:3px;line-height:1.6">
+            ${sys ? sys + ': ' : ''}выручка ${fmt(r.revenue)}<br>
+            начислено: <b>${fmt(r.gross_tax)}</b>
+            ${ded > 0 ? `&minus; вычет взносов: <b style="color:var(--good)">${fmt(ded)}</b>` : ''}
+            &nbsp;=&nbsp;к уплате: <b>${fmt(r.value)}</b>
+          </div>`;
+        }
+        html += `<div class="modal-row" style="align-items:start">
+          <div class="modal-deal-name">
+            <a href="/calculator/deals/${r.pk}/" target="_blank">${r.title}</a>
+            ${extra}
+          </div>
           <div class="modal-deal-val">${fmt(r.value)}</div>
         </div>`;
       });
-      html += `<div class="modal-total"><span>Итого</span><span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">${fmt(total)}</span></div>`;
+      html += `<div class="modal-total">
+        <span>Итого</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">${fmt(total)}</span>
+      </div>`;
       document.getElementById('modal-body').innerHTML = html;
     }
     document.getElementById('modal-overlay').classList.add('open');

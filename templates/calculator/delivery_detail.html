@@ -347,13 +347,16 @@
     function toNum(str) { return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0; }
     const base = '{% url "calculator:deal_save_from_delivery" delivery.pk %}';
     const p = new URLSearchParams({
-      sale:      toNum(root.dataset.sale),
-      cost:      toNum(root.dataset.purchase),
-      tax:       toNum(root.dataset.tax),
-      bank:      toNum(root.dataset.bank),
-      insurance: toNum(root.dataset.insurance),
-      other:     toNum(root.dataset.other),
-      profit:    toNum(root.dataset.profit),
+      sale:         toNum(root.dataset.sale),
+      cost:         toNum(root.dataset.purchase),
+      tax:          toNum(root.dataset.tax),
+      gross_tax:    toNum(root.dataset.grossTax),
+      tax_deduction:toNum(root.dataset.taxDeduction),
+      tax_system:   root.dataset.taxSystem || '',
+      bank:         toNum(root.dataset.bank),
+      insurance:    toNum(root.dataset.insurance),
+      other:        toNum(root.dataset.other),
+      profit:       toNum(root.dataset.profit),
     });
     document.getElementById('save-deal-btn').href = base + '?' + p.toString();
   });

@@ -195,6 +195,7 @@ def calculate(request: HttpRequest) -> HttpResponse:
         "desired_profit": data["desired_profit"],
         "recommendations": recommendations,
         "tariff": tariff,
+        "tax_system": tax_system,
         "tax_system_label": dict(form.fields["tax_system"].choices)[tax_system],
         "tax_comparison": tax_comparison,
     }
@@ -524,14 +525,16 @@ def deal_save_from_delivery(request: HttpRequest, pk: int) -> HttpResponse:
         form = DealForm(instance=deal)
     else:
         initial = {
-            "title": delivery.name,
-            "cost_price":       _q("cost")      or delivery.total_purchase,
-            "revenue":          _q("sale")      or Decimal("0"),
-            "tax_amount":       _q("tax")       or Decimal("0"),
-            "bank_commission":  _q("bank")      or Decimal("0"),
-            "insurance_amount": _q("insurance") or Decimal("0"),
-            "other_expenses":   _q("other")     or Decimal("0"),
-            "status": Deal.STATUS_DRAFT,
+            "title":            delivery.name,
+            "cost_price":       _q("cost")           or delivery.total_purchase,
+            "revenue":          _q("sale")           or Decimal("0"),
+            "tax_amount":       _q("tax")            or Decimal("0"),
+            "gross_tax":        _q("gross_tax")      or Decimal("0"),
+            "bank_commission":  _q("bank")           or Decimal("0"),
+            "insurance_amount": _q("insurance")      or Decimal("0"),
+            "other_expenses":   _q("other")          or Decimal("0"),
+            "tax_system":       request.GET.get("tax_system", ""),
+            "status":           Deal.STATUS_DRAFT,
         }
         form = DealForm(initial=initial)
     return render(request, "calculator/deal_form.html", {
@@ -696,7 +699,15 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
         for d in active_qs.order_by("-" + field):
             val = getattr(d, field) or Decimal("0")
             if val:
-                rows.append({"title": d.title, "pk": d.pk, "value": float(val)})
+                row = {"title": d.title, "pk": d.pk, "value": float(val)}
+                # Для налога добавляем расшифровку
+                if key == "tax":
+                    row["tax_system"]   = d.tax_system
+                    row["gross_tax"]    = float(d.gross_tax or 0)
+                    row["insurance"]    = float(d.insurance_amount or 0)
+                    row["revenue"]      = float(d.revenue or 0)
+                    row["tax_deduction"]= float((d.gross_tax or 0) - (d.tax_amount or 0))
+                rows.append(row)
         breakdown[key] = {"label": label, "rows": rows}
 
     breakdown_json = json.dumps(breakdown, ensure_ascii=False)
