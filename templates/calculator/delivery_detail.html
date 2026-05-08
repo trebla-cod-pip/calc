@@ -262,9 +262,20 @@
         </div>
       </div>
 
-      <button type="submit" class="btn-primary" style="width:100%;margin-top:16px;height:42px;font-size:14px;font-weight:600">
-        Рассчитать →
-      </button>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:16px">
+        <button type="submit" class="btn-primary" style="height:42px;font-size:14px;font-weight:600">
+          Рассчитать →
+        </button>
+        <a href="{% url 'calculator:deal_save_from_delivery' delivery.pk %}"
+           style="display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 18px;
+                  border-radius:var(--r);border:1px solid var(--border-strong);
+                  background:var(--surface);color:var(--text);font-size:13px;font-weight:600;
+                  text-decoration:none;white-space:nowrap;transition:border-color .12s,background .12s"
+           onmouseover="this.style.borderColor='var(--primary)';this.style.background='var(--primary-soft)';this.style.color='var(--primary)'"
+           onmouseout="this.style.borderColor='var(--border-strong)';this.style.background='var(--surface)';this.style.color='var(--text)'">
+          {% if delivery.deal %}✏️ Редакт. сделку{% else %}💾 Сохранить сделку{% endif %}
+        </a>
+      </div>
     </form>
   </div>
 

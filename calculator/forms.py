@@ -4,7 +4,7 @@
 from decimal import Decimal
 from django import forms
 
-from .models import BankTariff, Requirement, SupplierOffer, VendorOffer
+from .models import BankTariff, Deal, Requirement, SupplierOffer, VendorOffer
 
 TAX_SYSTEM_CHOICES = [
     ("usn6", "УСН 6% (доходы)"),
@@ -379,6 +379,57 @@ class SupplierOfferForm(forms.ModelForm):
             "price_per_unit": "Цена за единицу, ₽",
             "delivery_days": "Срок доставки, дней",
             "link": "Ссылка на КП / товар",
+            "comment": "Комментарий",
+        }
+
+
+class DealForm(forms.ModelForm):
+    """Форма сохранения / редактирования сделки."""
+
+    class Meta:
+        model = Deal
+        fields = [
+            "title", "client_name", "invoice_number", "status",
+            "purchase_date", "delivery_date", "payment_date",
+            "revenue", "cost_price", "tax_amount", "bank_commission",
+            "insurance_amount", "other_expenses", "comment",
+        ]
+        widgets = {
+            "title": forms.TextInput(attrs={
+                "class": "form-input", "placeholder": "Сделка по контракту №123",
+            }),
+            "client_name": forms.TextInput(attrs={
+                "class": "form-input", "placeholder": "ООО Заказчик / ИП Иванов",
+            }),
+            "invoice_number": forms.TextInput(attrs={
+                "class": "form-input", "placeholder": "СЧ-001 / Договор №45",
+            }),
+            "status": forms.Select(attrs={"class": "form-select"}),
+            "purchase_date":  forms.DateInput(attrs={"class": "form-input", "type": "date"}),
+            "delivery_date":  forms.DateInput(attrs={"class": "form-input", "type": "date"}),
+            "payment_date":   forms.DateInput(attrs={"class": "form-input", "type": "date"}),
+            "revenue":           forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "cost_price":        forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "tax_amount":        forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "bank_commission":   forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "insurance_amount":  forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "other_expenses":    forms.NumberInput(attrs={"class": "form-input", "step": "0.01", "min": "0", "placeholder": "0"}),
+            "comment": forms.Textarea(attrs={"class": "form-input", "rows": 2, "placeholder": "Дополнительные заметки…"}),
+        }
+        labels = {
+            "title": "Название сделки",
+            "client_name": "Заказчик / клиент",
+            "invoice_number": "Номер счёта / договора",
+            "status": "Статус",
+            "purchase_date": "Дата закупки",
+            "delivery_date": "Дата поставки",
+            "payment_date": "Дата оплаты клиентом",
+            "revenue": "Выручка (цена продажи), ₽",
+            "cost_price": "Себестоимость, ₽",
+            "tax_amount": "Налог, ₽",
+            "bank_commission": "Комиссия банка, ₽",
+            "insurance_amount": "Страховые взносы, ₽",
+            "other_expenses": "Прочие расходы, ₽",
             "comment": "Комментарий",
         }
 

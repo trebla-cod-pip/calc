@@ -1,0 +1,200 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize l10n %}
+
+{% block title %}{{ deal.title }} — Сделка{% endblock %}
+{% block page_title %}{{ deal.title }}{% endblock %}
+
+{% block content %}
+<style>
+  .card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm); }
+  .card-head { display:flex;align-items:center;gap:12px;padding:16px 20px 4px; }
+  .card-num { width:22px;height:22px;border-radius:6px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-size:12px;font-weight:600;flex-shrink:0; }
+  .card-title { font-weight:600;font-size:14px;color:var(--text); }
+  .card-body { padding:12px 20px 20px; }
+  .f-row { display:flex;flex-direction:column;gap:5px;margin-bottom:12px; }
+  .f-label { font-size:12px;font-weight:500;color:var(--text-2); }
+  .g2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+  .g3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
+  .fin-grid { display:grid;gap:8px; }
+  .fin-row { display:flex;align-items:center;justify-content:space-between;
+             padding:9px 13px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border); }
+  .fin-label { font-size:13px;color:var(--text-2); }
+  .fin-val { font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);font-weight:500; }
+  .total-row { background:var(--good-soft);border-color:#bbf7d0; }
+  .total-row .fin-label { color:var(--good);font-weight:600;font-size:13.5px; }
+  .total-row .fin-val { color:var(--good);font-weight:700;font-size:16px; }
+  .neg .total-row { background:var(--danger-soft);border-color:#fca5a5; }
+  .neg .total-row .fin-label,.neg .total-row .fin-val { color:var(--danger); }
+  .section-title { font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px; }
+</style>
+
+<!-- Breadcrumb + шапка -->
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+  <div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3);margin-bottom:4px">
+      <a href="{% url 'calculator:deal_list' %}" style="color:var(--text-3);text-decoration:none">Сделки</a>
+      <span>/</span>
+    </div>
+    <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--text)">{{ deal.title }}</h1>
+    <div style="margin-top:6px;display:flex;align-items:center;gap:10px">
+      {% with colors=deal.status_color %}
+      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;
+                   font-size:12px;font-weight:500;
+                   color:var({{ colors.0 }});background:var({{ colors.1 }});
+                   border:1px solid color-mix(in srgb, var({{ colors.0 }}) 20%, transparent)">
+        {{ deal.get_status_display }}
+      </span>
+      {% endwith %}
+      {% if deal.client_name %}
+      <span style="font-size:12px;color:var(--text-3)">{{ deal.client_name }}</span>
+      {% endif %}
+      {% if deal.invoice_number %}
+      <span style="font-size:12px;color:var(--text-3)">№{{ deal.invoice_number }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px">
+    {% if deal.delivery %}
+    <a href="{% url 'calculator:delivery_detail' deal.delivery.pk %}"
+       style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;
+              border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);
+              color:var(--text-2);font-size:13px;text-decoration:none;transition:all .12s"
+       onmouseover="this.style.color='var(--primary)'"
+       onmouseout="this.style.color='var(--text-2)'">
+      📦 Поставка
+    </a>
+    {% endif %}
+    <form method="post" action="{% url 'calculator:deal_delete' deal.pk %}"
+          onsubmit="return confirm('Удалить сделку «{{ deal.title|escapejs }}»?')">
+      {% csrf_token %}
+      <button type="submit"
+              style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;
+                     border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);
+                     color:var(--text-2);font-size:13px;cursor:pointer;transition:all .12s"
+              onmouseover="this.style.color='var(--danger)';this.style.borderColor='#fca5a5'"
+              onmouseout="this.style.color='var(--text-2)';this.style.borderColor='var(--border-strong)'">
+        🗑 Удалить
+      </button>
+    </form>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">
+
+  <!-- Левая: форма редактирования -->
+  <div>
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- Основное -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head"><div class="card-num">1</div><div class="card-title">Основные данные</div></div>
+        <div class="card-body">
+          <div class="f-row">
+            <label class="f-label">{{ form.title.label }}</label>{{ form.title }}
+          </div>
+          <div class="g2">
+            <div class="f-row"><label class="f-label">{{ form.client_name.label }}</label>{{ form.client_name }}</div>
+            <div class="f-row"><label class="f-label">{{ form.invoice_number.label }}</label>{{ form.invoice_number }}</div>
+          </div>
+          <div class="f-row"><label class="f-label">{{ form.status.label }}</label>{{ form.status }}</div>
+          <div class="f-row"><label class="f-label">{{ form.comment.label }}</label>{{ form.comment }}</div>
+        </div>
+      </div>
+
+      <!-- Даты -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head"><div class="card-num">2</div><div class="card-title">Даты</div></div>
+        <div class="card-body">
+          <div class="g3">
+            <div class="f-row"><label class="f-label">{{ form.purchase_date.label }}</label>{{ form.purchase_date }}</div>
+            <div class="f-row"><label class="f-label">{{ form.delivery_date.label }}</label>{{ form.delivery_date }}</div>
+            <div class="f-row"><label class="f-label">{{ form.payment_date.label }}</label>{{ form.payment_date }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Финансы -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head"><div class="card-num">3</div><div class="card-title">Финансы</div></div>
+        <div class="card-body">
+          <div class="g2">
+            <div class="f-row"><label class="f-label">{{ form.revenue.label }}</label>{{ form.revenue }}</div>
+            <div class="f-row"><label class="f-label">{{ form.cost_price.label }}</label>{{ form.cost_price }}</div>
+          </div>
+          <div class="section-title">Расходы</div>
+          <div class="g2">
+            <div class="f-row"><label class="f-label">{{ form.tax_amount.label }}</label>{{ form.tax_amount }}</div>
+            <div class="f-row"><label class="f-label">{{ form.bank_commission.label }}</label>{{ form.bank_commission }}</div>
+            <div class="f-row"><label class="f-label">{{ form.insurance_amount.label }}</label>{{ form.insurance_amount }}</div>
+            <div class="f-row"><label class="f-label">{{ form.other_expenses.label }}</label>{{ form.other_expenses }}</div>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="height:42px;padding:0 24px;font-size:14px;font-weight:600">
+        Сохранить изменения
+      </button>
+    </form>
+  </div>
+
+  <!-- Правая: итоги -->
+  <div style="position:sticky;top:76px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+                padding:20px;box-shadow:var(--shadow-lg)">
+      <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">
+        Итог сделки
+      </div>
+
+      <div class="fin-grid {% if deal.net_profit < 0 %}neg{% endif %}">
+        <div class="fin-row">
+          <span class="fin-label">Выручка</span>
+          <span class="fin-val">{{ deal.revenue|floatformat:0|intcomma }} ₽</span>
+        </div>
+        <div class="fin-row">
+          <span class="fin-label">Себестоимость</span>
+          <span class="fin-val">{{ deal.cost_price|floatformat:0|intcomma }} ₽</span>
+        </div>
+        <div class="fin-row">
+          <span class="fin-label">Налог</span>
+          <span class="fin-val">{{ deal.tax_amount|floatformat:0|intcomma }} ₽</span>
+        </div>
+        <div class="fin-row">
+          <span class="fin-label">Комиссия банка</span>
+          <span class="fin-val">{{ deal.bank_commission|floatformat:0|intcomma }} ₽</span>
+        </div>
+        <div class="fin-row">
+          <span class="fin-label">Страховые взносы</span>
+          <span class="fin-val">{{ deal.insurance_amount|floatformat:0|intcomma }} ₽</span>
+        </div>
+        <div class="fin-row">
+          <span class="fin-label">Прочие расходы</span>
+          <span class="fin-val">{{ deal.other_expenses|floatformat:0|intcomma }} ₽</span>
+        </div>
+        <div class="fin-row total-row">
+          <span class="fin-label">Чистая прибыль</span>
+          <span class="fin-val">{{ deal.net_profit|floatformat:0|intcomma }} ₽</span>
+        </div>
+      </div>
+
+      {% if deal.margin_percent is not None %}
+      <div style="margin-top:12px;padding:10px 13px;border-radius:var(--r);background:var(--surface-2);
+                  border:1px solid var(--border);text-align:center">
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:4px">Маржа</div>
+        <div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;
+                    color:{% if deal.margin_percent >= 10 %}var(--good){% elif deal.margin_percent >= 0 %}var(--warn){% else %}var(--danger){% endif %}">
+          {{ deal.margin_percent }}%
+        </div>
+      </div>
+      {% endif %}
+
+      <div style="margin-top:14px;font-size:11px;color:var(--text-3);line-height:1.6">
+        Создана: {{ deal.created_at|date:"d.m.Y H:i" }}<br>
+        Обновлена: {{ deal.updated_at|date:"d.m.Y H:i" }}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

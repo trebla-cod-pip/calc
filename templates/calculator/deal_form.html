@@ -1,0 +1,190 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize l10n %}
+
+{% block title %}{% if deal %}Редактировать сделку{% else %}Сохранить сделку{% endif %} — {{ delivery.name }}{% endblock %}
+{% block page_title %}{% if deal %}Редактировать сделку{% else %}Сохранить как сделку{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+  .card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm); }
+  .card-head { display:flex;align-items:center;gap:12px;padding:16px 20px 4px; }
+  .card-num { width:22px;height:22px;border-radius:6px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-size:12px;font-weight:600;flex-shrink:0; }
+  .card-title { font-weight:600;font-size:14px;color:var(--text); }
+  .card-body { padding:12px 20px 20px; }
+  .f-row { display:flex;flex-direction:column;gap:5px;margin-bottom:12px; }
+  .f-label { font-size:12px;font-weight:500;color:var(--text-2); }
+  .g2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+  .g3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
+  .section-title { font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 10px; }
+  .fin-row { display:grid;grid-template-columns:1fr auto;align-items:center;padding:8px 12px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border);gap:12px; }
+  .fin-row + .fin-row { margin-top:6px; }
+  .fin-label { font-size:13px;color:var(--text-2); }
+</style>
+
+<!-- Breadcrumb -->
+<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3);margin-bottom:16px">
+  <a href="{% url 'calculator:delivery_list' %}" style="color:var(--text-3);text-decoration:none">Поставки</a>
+  <span>/</span>
+  <a href="{% url 'calculator:delivery_detail' delivery.pk %}" style="color:var(--text-3);text-decoration:none">{{ delivery.name }}</a>
+  <span>/</span>
+  <span>{% if deal %}Редактировать сделку{% else %}Сохранить сделку{% endif %}</span>
+</div>
+
+<div style="max-width:720px">
+<form method="post" action="{% url 'calculator:deal_save_from_delivery' delivery.pk %}">
+  {% csrf_token %}
+
+  <!-- Карточка 1: Основное -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <div class="card-num">1</div>
+      <div class="card-title">Основные данные</div>
+    </div>
+    <div class="card-body">
+      <div class="f-row">
+        <label class="f-label" for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+        {{ form.title }}
+        {% if form.title.errors %}<span style="font-size:11px;color:var(--danger)">{{ form.title.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="g2">
+        <div class="f-row">
+          <label class="f-label" for="{{ form.client_name.id_for_label }}">{{ form.client_name.label }}</label>
+          {{ form.client_name }}
+        </div>
+        <div class="f-row">
+          <label class="f-label" for="{{ form.invoice_number.id_for_label }}">{{ form.invoice_number.label }}</label>
+          {{ form.invoice_number }}
+        </div>
+      </div>
+      <div class="f-row">
+        <label class="f-label" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+        {{ form.status }}
+      </div>
+      <div class="f-row">
+        <label class="f-label" for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+        {{ form.comment }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Карточка 2: Даты -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <div class="card-num">2</div>
+      <div class="card-title">Даты</div>
+    </div>
+    <div class="card-body">
+      <div class="g3">
+        <div class="f-row">
+          <label class="f-label">{{ form.purchase_date.label }}</label>
+          {{ form.purchase_date }}
+        </div>
+        <div class="f-row">
+          <label class="f-label">{{ form.delivery_date.label }}</label>
+          {{ form.delivery_date }}
+        </div>
+        <div class="f-row">
+          <label class="f-label">{{ form.payment_date.label }}</label>
+          {{ form.payment_date }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Карточка 3: Финансы -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-head">
+      <div class="card-num">3</div>
+      <div class="card-title">Финансы (из калькулятора)</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-3)">Заполните из результата расчёта</span>
+    </div>
+    <div class="card-body">
+      <div class="g2">
+        <div class="f-row">
+          <label class="f-label">{{ form.revenue.label }}</label>
+          {{ form.revenue }}
+        </div>
+        <div class="f-row">
+          <label class="f-label">{{ form.cost_price.label }}</label>
+          {{ form.cost_price }}
+        </div>
+      </div>
+      <div class="section-title">Расходы (автоматически из расчёта)</div>
+      <div class="g2">
+        <div class="f-row">
+          <label class="f-label">{{ form.tax_amount.label }}</label>
+          {{ form.tax_amount }}
+        </div>
+        <div class="f-row">
+          <label class="f-label">{{ form.bank_commission.label }}</label>
+          {{ form.bank_commission }}
+        </div>
+        <div class="f-row">
+          <label class="f-label">{{ form.insurance_amount.label }}</label>
+          {{ form.insurance_amount }}
+        </div>
+        <div class="f-row">
+          <label class="f-label">{{ form.other_expenses.label }}</label>
+          {{ form.other_expenses }}
+        </div>
+      </div>
+
+      <!-- Чистая прибыль — вычисляется JS -->
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:12px 14px;margin-top:12px;border-radius:var(--r-lg);
+                  background:var(--good-soft);border:1px solid #bbf7d0">
+        <span style="font-weight:600;font-size:13px;color:var(--good)">Чистая прибыль</span>
+        <span id="net-profit-preview" style="font-weight:700;font-size:18px;color:var(--good);font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
+          0 ₽
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px">
+    <button type="submit" class="btn-primary" style="height:42px;padding:0 24px;font-size:14px;font-weight:600">
+      {% if deal %}Сохранить изменения{% else %}💾 Сохранить сделку{% endif %}
+    </button>
+    <a href="{% url 'calculator:delivery_detail' delivery.pk %}"
+       style="display:inline-flex;align-items:center;height:42px;padding:0 18px;
+              border-radius:var(--r);border:1px solid var(--border-strong);
+              background:var(--surface);color:var(--text-2);font-size:13px;text-decoration:none">
+      Отмена
+    </a>
+    {% if deal %}
+    <form method="post" action="{% url 'calculator:deal_delete' deal.pk %}" style="margin-left:auto"
+          onsubmit="return confirm('Удалить сделку?')">
+      {% csrf_token %}
+      <button type="submit"
+              style="height:42px;padding:0 14px;border-radius:var(--r);border:1px solid var(--border-strong);
+                     background:var(--surface);color:var(--text-2);font-size:13px;cursor:pointer"
+              onmouseover="this.style.color='var(--danger)';this.style.borderColor='#fca5a5'"
+              onmouseout="this.style.color='var(--text-2)';this.style.borderColor='var(--border-strong)'">
+        Удалить
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function calcNetProfit() {
+    const get = id => parseFloat(document.getElementById(id)?.value) || 0;
+    const rev  = get('{{ form.revenue.id_for_label }}');
+    const cost = get('{{ form.cost_price.id_for_label }}');
+    const tax  = get('{{ form.tax_amount.id_for_label }}');
+    const bank = get('{{ form.bank_commission.id_for_label }}');
+    const ins  = get('{{ form.insurance_amount.id_for_label }}');
+    const oth  = get('{{ form.other_expenses.id_for_label }}');
+    const profit = rev - cost - tax - bank - ins - oth;
+    const el = document.getElementById('net-profit-preview');
+    el.textContent = new Intl.NumberFormat('ru-RU', {maximumFractionDigits:2}).format(profit) + ' ₽';
+    el.style.color = profit >= 0 ? 'var(--good)' : 'var(--danger)';
+  }
+  document.querySelectorAll('input[type=number]').forEach(el => el.addEventListener('input', calcNetProfit));
+  calcNetProfit();
+</script>
+{% endblock %}

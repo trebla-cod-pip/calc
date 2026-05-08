@@ -18,8 +18,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 
-from .forms import CalculatorForm, RequirementForm, SupplierOfferForm, SupplierOfferEditForm
-from .models import AppSettings, BankTariff, Delivery, DeliveryItem, Requirement, SupplierOffer, TaxSettings
+from .forms import CalculatorForm, DealForm, RequirementForm, SupplierOfferForm, SupplierOfferEditForm
+from .models import AppSettings, BankTariff, Deal, Delivery, DeliveryItem, Requirement, SupplierOffer, TaxSettings
 from .services.profit_calculator import (
     calculate_net_profit,
     find_required_sale_price,
@@ -457,6 +457,185 @@ def delivery_delete(request: HttpRequest, pk: int) -> HttpResponse:
     delivery.delete()
     messages.success(request, f"Поставка «{name}» удалена.")
     return redirect("calculator:delivery_list")
+
+
+# ─────────────────────────────────────────────────────
+# Сделки
+# ─────────────────────────────────────────────────────
+
+def deal_save_from_delivery(request: HttpRequest, pk: int) -> HttpResponse:
+    """
+    POST /calculator/deliveries/<pk>/save-deal/
+    Сохраняет расчёт поставки как Сделку. Принимает данные из калькулятора.
+    """
+    delivery = get_object_or_404(Delivery, pk=pk)
+
+    # Если сделка уже существует — редактируем её
+    deal = getattr(delivery, "deal", None)
+
+    if request.method == "POST":
+        form = DealForm(request.POST, instance=deal)
+        if form.is_valid():
+            saved = form.save(commit=False)
+            saved.delivery = delivery
+            if not saved.title:
+                from datetime import date
+                saved.title = f"{delivery.name} — {date.today().strftime('%d.%m.%Y')}"
+            saved.save()
+            messages.success(request, f"Сделка «{saved.title}» сохранена.")
+            return redirect("calculator:deal_detail", pk=saved.pk)
+        # Ошибка формы — возвращаем на страницу поставки
+        return render(request, "calculator/delivery_detail.html", {
+            "delivery": delivery,
+            "form": CalculatorForm(initial={"purchase_amount": delivery.total_purchase}),
+            "deal_form": form,
+            "app_settings": AppSettings.get(),
+            "total_purchase": delivery.total_purchase,
+            "show_deal_modal": True,
+        })
+
+    # GET — показываем форму с предзаполненными данными из калькулятора
+    initial = {
+        "title": delivery.name,
+        "cost_price": delivery.total_purchase,
+        "status": Deal.STATUS_DRAFT,
+    }
+    if deal:
+        form = DealForm(instance=deal)
+    else:
+        form = DealForm(initial=initial)
+    return render(request, "calculator/deal_form.html", {
+        "form": form,
+        "delivery": delivery,
+        "deal": deal,
+    })
+
+
+def deal_list(request: HttpRequest) -> HttpResponse:
+    """Список всех сделок с фильтрацией по статусу."""
+    status_filter = request.GET.get("status", "")
+    deals = Deal.objects.select_related("delivery").all()
+    if status_filter:
+        deals = deals.filter(status=status_filter)
+
+    # Итоги для шапки
+    from django.db.models import Sum, Count
+    totals = Deal.objects.aggregate(
+        total_revenue=Sum("revenue"),
+        total_profit=Sum("cost_price"),  # используем как base, net считаем в шаблоне
+        count=Count("id"),
+    )
+    return render(request, "calculator/deals/list.html", {
+        "deals": deals,
+        "status_choices": Deal.STATUS_CHOICES,
+        "status_filter": status_filter,
+        "totals": totals,
+    })
+
+
+def deal_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    """Карточка сделки."""
+    deal = get_object_or_404(Deal.objects.select_related("delivery"), pk=pk)
+    if request.method == "POST":
+        form = DealForm(request.POST, instance=deal)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Сделка обновлена.")
+            return redirect("calculator:deal_detail", pk=deal.pk)
+    else:
+        form = DealForm(instance=deal)
+    return render(request, "calculator/deals/detail.html", {
+        "deal": deal,
+        "form": form,
+    })
+
+
+@require_http_methods(["POST"])
+def deal_update_status(request: HttpRequest, pk: int) -> HttpResponse:
+    """HTMX: быстрое изменение статуса сделки."""
+    deal = get_object_or_404(Deal, pk=pk)
+    new_status = request.POST.get("status")
+    if new_status in dict(Deal.STATUS_CHOICES):
+        deal.status = new_status
+        deal.save(update_fields=["status"])
+    return render(request, "calculator/deals/partials/status_badge.html", {"deal": deal})
+
+
+@require_http_methods(["POST"])
+def deal_delete(request: HttpRequest, pk: int) -> HttpResponse:
+    """Удаление сделки."""
+    deal = get_object_or_404(Deal, pk=pk)
+    deal.delete()
+    messages.success(request, "Сделка удалена.")
+    return redirect("calculator:deal_list")
+
+
+def deal_analytics(request: HttpRequest) -> HttpResponse:
+    """Страница аналитики по сделкам."""
+    from django.db.models import Sum, Count, Avg, Q
+    from datetime import date, timedelta
+
+    period = request.GET.get("period", "all")
+    today = date.today()
+    deals_qs = Deal.objects.all()
+
+    if period == "month":
+        deals_qs = deals_qs.filter(created_at__year=today.year, created_at__month=today.month)
+    elif period == "quarter":
+        quarter_start = date(today.year, ((today.month - 1) // 3) * 3 + 1, 1)
+        deals_qs = deals_qs.filter(created_at__date__gte=quarter_start)
+    elif period == "year":
+        deals_qs = deals_qs.filter(created_at__year=today.year)
+
+    agg = deals_qs.exclude(status=Deal.STATUS_CANCELLED).aggregate(
+        total_revenue=Sum("revenue"),
+        total_cost=Sum("cost_price"),
+        total_tax=Sum("tax_amount"),
+        total_bank=Sum("bank_commission"),
+        total_insurance=Sum("insurance_amount"),
+        total_other=Sum("other_expenses"),
+        count=Count("id"),
+    )
+
+    # Чистая прибыль по месяцам (для графика) — последние 12 месяцев
+    from django.db.models.functions import TruncMonth
+    monthly = (
+        Deal.objects
+        .exclude(status=Deal.STATUS_CANCELLED)
+        .annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(
+            revenue=Sum("revenue"),
+            cost=Sum("cost_price"),
+            tax=Sum("tax_amount"),
+            bank=Sum("bank_commission"),
+            insurance=Sum("insurance_amount"),
+            other=Sum("other_expenses"),
+        )
+        .order_by("month")
+    )
+
+    # Лучшая сделка по прибыли (revenue - all costs)
+    best_deal = None
+    best_profit = None
+    for d in deals_qs.exclude(status=Deal.STATUS_CANCELLED):
+        p = d.net_profit
+        if best_profit is None or p > best_profit:
+            best_profit = p
+            best_deal = d
+
+    return render(request, "calculator/deals/analytics.html", {
+        "agg": agg,
+        "monthly": list(monthly),
+        "period": period,
+        "best_deal": best_deal,
+        "best_profit": best_profit,
+        "deal_statuses": Deal.STATUS_CHOICES,
+        "status_counts": {
+            s: deals_qs.filter(status=s).count()
+            for s, _ in Deal.STATUS_CHOICES
+        },
+    })
 
 
 @require_http_methods(["POST"])

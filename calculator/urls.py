@@ -31,5 +31,13 @@ urlpatterns = [
     path("deliveries/create/", views.delivery_create, name="delivery_create"),
     path("deliveries/<int:pk>/", views.delivery_detail, name="delivery_detail"),
     path("deliveries/<int:pk>/delete/", views.delivery_delete, name="delivery_delete"),
+    path("deliveries/<int:pk>/save-deal/", views.deal_save_from_delivery, name="deal_save_from_delivery"),
     path("deliveries/items/<int:item_pk>/set-offer/", views.delivery_set_offer, name="delivery_set_offer"),
+
+    # Сделки
+    path("deals/", views.deal_list, name="deal_list"),
+    path("deals/analytics/", views.deal_analytics, name="deal_analytics"),
+    path("deals/<int:pk>/", views.deal_detail, name="deal_detail"),
+    path("deals/<int:pk>/delete/", views.deal_delete, name="deal_delete"),
+    path("deals/<int:pk>/status/", views.deal_update_status, name="deal_update_status"),
 ]

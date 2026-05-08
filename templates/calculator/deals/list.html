@@ -1,0 +1,151 @@
+{% extends "calculator/base_calc.html" %}
+{% load humanize l10n %}
+
+{% block title %}Сделки{% endblock %}
+{% block page_title %}Сделки{% endblock %}
+
+{% block content %}
+<style>
+  .status-pill {
+    display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;
+    font-size:12px;font-weight:500;white-space:nowrap;
+  }
+  .tbl { width:100%;border-collapse:collapse; }
+  .tbl th { font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;
+             padding:10px 14px;border-bottom:1px solid var(--border);text-align:left;background:var(--surface-warm); }
+  .tbl td { padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);vertical-align:middle; }
+  .tbl tr:last-child td { border-bottom:none; }
+  .tbl tr:hover td { background:var(--surface-2); }
+  .mono { font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums; }
+  .profit-pos { color:var(--good);font-weight:600; }
+  .profit-neg { color:var(--danger);font-weight:600; }
+  .filter-tab { display:inline-flex;align-items:center;padding:5px 14px;border-radius:999px;
+                font-size:12px;font-weight:500;text-decoration:none;color:var(--text-2);
+                border:1px solid transparent;transition:all .12s; }
+  .filter-tab:hover { background:var(--surface-2);border-color:var(--border); }
+  .filter-tab.active { background:var(--primary-soft);color:var(--primary);border-color:var(--primary-soft2); }
+</style>
+
+<!-- Шапка страницы -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div>
+    <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--text)">Сделки</h1>
+    <div style="font-size:12px;color:var(--text-3);margin-top:3px">Сохранённые расчёты поставок</div>
+  </div>
+  <a href="{% url 'calculator:deal_analytics' %}"
+     style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 16px;
+            border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);
+            color:var(--text);font-size:13px;font-weight:500;text-decoration:none;transition:all .12s"
+     onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
+     onmouseout="this.style.borderColor='var(--border-strong)';this.style.color='var(--text)'">
+    📊 Аналитика
+  </a>
+</div>
+
+<!-- Фильтр по статусу -->
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+  <a href="{% url 'calculator:deal_list' %}" class="filter-tab {% if not status_filter %}active{% endif %}">
+    Все
+  </a>
+  {% for val, label in status_choices %}
+  <a href="?status={{ val }}" class="filter-tab {% if status_filter == val %}active{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Таблица сделок -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);overflow:hidden">
+  {% if deals %}
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Название</th>
+        <th>Заказчик</th>
+        <th>Статус</th>
+        <th>Дата закупки</th>
+        <th>Дата поставки</th>
+        <th>Выручка</th>
+        <th>Прибыль</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for deal in deals %}
+      {% with colors=deal.status_color %}
+      <tr>
+        <td style="color:var(--text-3);font-size:12px">{{ deal.pk }}</td>
+        <td>
+          <a href="{% url 'calculator:deal_detail' deal.pk %}"
+             style="font-weight:500;color:var(--text);text-decoration:none"
+             onmouseover="this.style.color='var(--primary)'"
+             onmouseout="this.style.color='var(--text)'">
+            {{ deal.title }}
+          </a>
+          {% if deal.invoice_number %}
+          <div style="font-size:11px;color:var(--text-3)">{{ deal.invoice_number }}</div>
+          {% endif %}
+        </td>
+        <td style="color:var(--text-2)">{{ deal.client_name|default:"—" }}</td>
+        <td>
+          <!-- Быстрое изменение статуса через HTMX -->
+          <div id="status-wrap-{{ deal.pk }}">
+            <form hx-post="{% url 'calculator:deal_update_status' deal.pk %}"
+                  hx-target="#status-wrap-{{ deal.pk }}"
+                  hx-swap="innerHTML"
+                  style="display:inline">
+              {% csrf_token %}
+              <select name="status"
+                      onchange="this.form.requestSubmit()"
+                      style="border:none;background:var({{ colors.1 }});color:var({{ colors.0 }});
+                             font-size:12px;font-weight:500;border-radius:999px;padding:3px 8px;
+                             cursor:pointer;outline:none;font-family:inherit">
+                {% for val, label in deal.STATUS_CHOICES %}
+                <option value="{{ val }}" {% if deal.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </div>
+        </td>
+        <td style="color:var(--text-2)">{{ deal.purchase_date|date:"d.m.Y"|default:"—" }}</td>
+        <td style="color:var(--text-2)">{{ deal.delivery_date|date:"d.m.Y"|default:"—" }}</td>
+        <td class="mono">{{ deal.revenue|floatformat:0|intcomma }} ₽</td>
+        <td class="mono {% if deal.net_profit >= 0 %}profit-pos{% else %}profit-neg{% endif %}">
+          {{ deal.net_profit|floatformat:0|intcomma }} ₽
+          {% if deal.margin_percent is not None %}
+          <div style="font-size:11px;font-weight:400;color:var(--text-3)">{{ deal.margin_percent }}%</div>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center">
+            <a href="{% url 'calculator:deal_detail' deal.pk %}"
+               style="font-size:12px;color:var(--primary);text-decoration:none">Открыть</a>
+            {% if deal.delivery %}
+            <a href="{% url 'calculator:delivery_detail' deal.delivery.pk %}"
+               style="font-size:12px;color:var(--text-3);text-decoration:none">Поставка</a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:48px 28px;text-align:center;color:var(--text-3)">
+    <div style="font-size:36px;margin-bottom:12px">📋</div>
+    <div style="font-size:14px;font-weight:500;color:var(--text-2);margin-bottom:6px">Нет сделок</div>
+    <div style="font-size:13px">
+      Откройте поставку и нажмите «Сохранить сделку» после расчёта.
+    </div>
+    <a href="{% url 'calculator:delivery_list' %}"
+       style="display:inline-flex;margin-top:16px;height:36px;align-items:center;padding:0 16px;
+              border-radius:var(--r);background:var(--primary);color:white;font-size:13px;
+              font-weight:500;text-decoration:none">
+      К поставкам →
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

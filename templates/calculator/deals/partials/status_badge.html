@@ -1,0 +1,8 @@
+{% with colors=deal.status_color %}
+<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;
+             font-size:12px;font-weight:500;
+             color:var({{ colors.0 }});background:var({{ colors.1 }});
+             border:1px solid color-mix(in srgb, var({{ colors.0 }}) 20%, transparent)">
+  {{ deal.get_status_display }}
+</span>
+{% endwith %}

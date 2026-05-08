@@ -270,6 +270,92 @@ class AppSettings(models.Model):
         return obj
 
 
+class Deal(models.Model):
+    """Сделка — сохранённый расчёт поставки с финансовым snapshot'ом."""
+
+    STATUS_DRAFT     = "draft"
+    STATUS_PURCHASED = "purchased"
+    STATUS_DELIVERED = "delivered"
+    STATUS_PAID      = "paid"
+    STATUS_CANCELLED = "cancelled"
+
+    STATUS_CHOICES = [
+        (STATUS_DRAFT,     "Черновик"),
+        (STATUS_PURCHASED, "Закуплено"),
+        (STATUS_DELIVERED, "Поставлено"),
+        (STATUS_PAID,      "Оплачено клиентом"),
+        (STATUS_CANCELLED, "Отменена"),
+    ]
+
+    STATUS_COLORS = {
+        STATUS_DRAFT:     ("--text-3",   "--surface-2"),
+        STATUS_PURCHASED: ("--amber",    "--warn-soft"),
+        STATUS_DELIVERED: ("--primary",  "--primary-soft"),
+        STATUS_PAID:      ("--good",     "--good-soft"),
+        STATUS_CANCELLED: ("--danger",   "--danger-soft"),
+    }
+
+    delivery    = models.OneToOneField(
+        Delivery, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="deal", verbose_name="Поставка",
+    )
+    title       = models.CharField("Название сделки", max_length=300)
+    client_name = models.CharField("Заказчик / клиент", max_length=200, blank=True)
+    invoice_number = models.CharField("Номер счёта / договора", max_length=100, blank=True)
+    status      = models.CharField(
+        "Статус", max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT
+    )
+
+    # Даты
+    purchase_date  = models.DateField("Дата закупки",  null=True, blank=True)
+    delivery_date  = models.DateField("Дата поставки", null=True, blank=True)
+    payment_date   = models.DateField("Дата оплаты клиентом", null=True, blank=True)
+
+    # Финансовый snapshot (из калькулятора)
+    revenue             = models.DecimalField("Выручка (цена для клиента), ₽", max_digits=14, decimal_places=2, default=0)
+    cost_price          = models.DecimalField("Себестоимость, ₽",   max_digits=14, decimal_places=2, default=0)
+    tax_amount          = models.DecimalField("Налог, ₽",           max_digits=14, decimal_places=2, default=0)
+    bank_commission     = models.DecimalField("Комиссия банка, ₽",  max_digits=14, decimal_places=2, default=0)
+    insurance_amount    = models.DecimalField("Страховые взносы, ₽",max_digits=14, decimal_places=2, default=0)
+    other_expenses      = models.DecimalField("Прочие расходы, ₽",  max_digits=14, decimal_places=2, default=0)
+
+    comment    = models.TextField("Комментарий", blank=True)
+    created_at = models.DateTimeField("Создано", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлено", auto_now=True)
+
+    class Meta:
+        verbose_name = "Сделка"
+        verbose_name_plural = "Сделки"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.title
+
+    @property
+    def net_profit(self):
+        """Чистая прибыль = выручка − все расходы."""
+        from decimal import Decimal
+        return (
+            self.revenue
+            - self.cost_price
+            - self.tax_amount
+            - self.bank_commission
+            - self.insurance_amount
+            - self.other_expenses
+        )
+
+    @property
+    def margin_percent(self):
+        """Маржа, %."""
+        if not self.revenue:
+            return None
+        return round(self.net_profit / self.revenue * 100, 1)
+
+    @property
+    def status_color(self):
+        return self.STATUS_COLORS.get(self.status, ("--text-3", "--surface-2"))
+
+
 class VendorOffer(models.Model):
     """
     Коммерческое предложение (КП) от поставщика.

@@ -328,6 +328,15 @@
       <span>Поставки</span>
     </a>
 
+    <a href="{% url 'calculator:deal_list' %}"
+       class="nav-lnk {% if request.resolver_match.url_name == 'deal_list' or request.resolver_match.url_name == 'deal_detail' or request.resolver_match.url_name == 'deal_analytics' %}active{% endif %}">
+      <svg class="nic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <rect x="2" y="2" width="12" height="12" rx="2"/>
+        <path d="M5 8h6M5 5h3M5 11h4"/>
+      </svg>
+      <span>Сделки</span>
+    </a>
+
     <div class="nav-section">Справочники</div>
 
     <a href="{% url 'calculator:tariffs' %}"
