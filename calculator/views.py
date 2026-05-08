@@ -502,14 +502,11 @@ def deal_save_from_delivery(request: HttpRequest, pk: int) -> HttpResponse:
             saved.save()
             messages.success(request, f"Сделка «{saved.title}» сохранена.")
             return redirect("calculator:deal_detail", pk=saved.pk)
-        # Ошибка формы — возвращаем на страницу поставки
-        return render(request, "calculator/delivery_detail.html", {
+        # Ошибка формы — рендерим deal_form.html с ошибками (не delivery_detail!)
+        return render(request, "calculator/deal_form.html", {
+            "form": form,
             "delivery": delivery,
-            "form": CalculatorForm(initial={"purchase_amount": delivery.total_purchase}),
-            "deal_form": form,
-            "app_settings": AppSettings.get(),
-            "total_purchase": delivery.total_purchase,
-            "show_deal_modal": True,
+            "deal": deal,
         })
 
     # GET — показываем форму с предзаполненными данными из калькулятора

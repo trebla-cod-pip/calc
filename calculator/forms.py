@@ -386,6 +386,15 @@ class SupplierOfferForm(forms.ModelForm):
 class DealForm(forms.ModelForm):
     """Форма сохранения / редактирования сделки."""
 
+    # Название необязательно в форме — view подставляет дефолт из delivery.name
+    title = forms.CharField(
+        label="Название сделки",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-input", "placeholder": "Сделка по контракту №123",
+        }),
+    )
+
     class Meta:
         model = Deal
         fields = [

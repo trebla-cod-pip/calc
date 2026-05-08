@@ -31,6 +31,17 @@
 </div>
 
 <div style="max-width:720px">
+
+{% if form.errors %}
+<div style="margin-bottom:14px;padding:12px 16px;border-radius:var(--r-lg);background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:13px">
+  <b>Не удалось сохранить сделку. Проверьте поля:</b>
+  <ul style="margin:6px 0 0 16px;padding:0">
+    {% for field in form %}{% for error in field.errors %}<li><b>{{ field.label }}:</b> {{ error }}</li>{% endfor %}{% endfor %}
+    {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <form method="post" action="{% url 'calculator:deal_save_from_delivery' delivery.pk %}">
   {% csrf_token %}
 
