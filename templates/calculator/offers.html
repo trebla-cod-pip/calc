@@ -5,189 +5,22 @@
 {% block page_title %}КП поставщиков{% endblock %}
 
 {% block content %}
-<div class="mb-5">
-  <h1 style="font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0 0 2px">КП поставщиков</h1>
-  <p style="font-size:13px;color:var(--text-3);margin:0">
-    Добавляйте коммерческие предложения к потребностям — система автоматически найдёт лучшую цену.
-  </p>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0 0 2px">КП поставщиков</h1>
+    <p style="font-size:13px;color:var(--text-3);margin:0">
+      Все коммерческие предложения по потребностям
+    </p>
+  </div>
+  <a href="{% url 'calculator:requirements' %}"
+     style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 16px;
+            border-radius:var(--r);background:var(--primary);color:#fff;
+            font-size:13px;font-weight:600;text-decoration:none">
+    ➕ Добавить КП
+  </a>
 </div>
 
-<div style="display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start">
-
-  <!-- ══ ЛЕВАЯ КОЛОНКА: форма добавления КП ══ -->
-  <div style="position:sticky;top:76px;display:flex;flex-direction:column;gap:14px">
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px">
-      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:7px">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--primary)">
-          <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
-        </svg>
-        Добавить КП
-      </div>
-
-      <div id="offer-form-errors"></div>
-
-      <form id="offer-form"
-            hx-post="{% url 'calculator:offers_list' %}"
-            hx-target="#all-offers-area"
-            hx-swap="innerHTML"
-            hx-on::after-request="if(event.detail.successful){
-              document.getElementById('offer-form-errors').innerHTML='';
-              var lbl=document.getElementById('offer-form').dataset.reqLabel;
-              document.querySelectorAll('#offer-form input:not([type=hidden]),#offer-form textarea').forEach(function(el){
-                if(el.name!=='requirement') el.value='';
-              });
-              if(lbl) document.getElementById('req-search-input').value=lbl;
-            }"
-            style="display:flex;flex-direction:column;gap:11px">
-        {% csrf_token %}
-        {{ form.requirement }}
-
-        <!-- Поиск потребности -->
-        <div style="position:relative">
-          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:4px">
-            Потребность <span style="color:var(--danger)">*</span>
-          </label>
-          <input type="text"
-                 id="req-search-input"
-                 name="q"
-                 value="{% if selected_req %}{% if selected_req.short_name %}{{ selected_req.short_name }}{% else %}{{ selected_req.name }}{% endif %} — {{ selected_req.quantity }} {{ selected_req.unit }}{% endif %}"
-                 placeholder="Начните вводить название…"
-                 autocomplete="off"
-                 class="form-input"
-                 hx-get="{% url 'calculator:search_requirements' %}"
-                 hx-trigger="focus, keyup changed delay:200ms"
-                 hx-target="#req-search-results"
-                 hx-swap="innerHTML"
-                 hx-include="[name=q]">
-          <div style="position:relative">
-            <ul id="req-search-results"
-                style="position:absolute;z-index:50;width:100%;background:var(--surface);
-                       border:1px solid var(--border);border-radius:var(--r-lg);
-                       box-shadow:var(--shadow-lg);margin-top:4px;max-height:220px;
-                       overflow-y:auto;list-style:none;padding:4px 0;margin:4px 0 0;
-                       display:none">
-            </ul>
-          </div>
-          {% if form.requirement.errors %}
-            <p style="font-size:12px;color:var(--danger);margin-top:4px">{{ form.requirement.errors.0 }}</p>
-          {% endif %}
-          <p style="font-size:11px;color:var(--text-3);margin-top:4px">
-            Нет нужной?
-            <a href="{% url 'calculator:requirements' %}" style="color:var(--primary);text-decoration:none">
-              Создать потребность →
-            </a>
-          </p>
-        </div>
-
-        <!-- Поставщик -->
-        <div>
-          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:4px">
-            {{ form.supplier_name.label }} <span style="color:var(--danger)">*</span>
-          </label>
-          {{ form.supplier_name }}
-          {% if form.supplier_name.errors %}
-            <p style="font-size:12px;color:var(--danger);margin-top:4px">{{ form.supplier_name.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-        <!-- Цена -->
-        <div>
-          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:4px">
-            {{ form.price_per_unit.label }} <span style="color:var(--danger)">*</span>
-          </label>
-          {{ form.price_per_unit }}
-          {% if form.price_per_unit.errors %}
-            <p style="font-size:12px;color:var(--danger);margin-top:4px">{{ form.price_per_unit.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-        <!-- Срок -->
-        <div>
-          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:4px">
-            {{ form.delivery_days.label }}
-          </label>
-          {{ form.delivery_days }}
-        </div>
-
-        <!-- Ссылка -->
-        <div>
-          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:4px">
-            {{ form.link.label }}
-          </label>
-          {{ form.link }}
-        </div>
-
-        <!-- Комментарий -->
-        <div>
-          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-2);margin-bottom:4px">
-            {{ form.comment.label }}
-          </label>
-          {{ form.comment }}
-        </div>
-
-        <button type="submit" class="btn-primary" style="width:100%;margin-top:2px">
-          Добавить КП →
-        </button>
-      </form>
-    </div>
-
-  </div>
-
-  <!-- ══ ПРАВАЯ КОЛОНКА: все КП ══ -->
-  <div id="all-offers-area">
-    {% include "calculator/partials/all_offers.html" %}
-  </div>
-
+<div id="all-offers-area">
+  {% include "calculator/partials/all_offers.html" %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-  const searchInput  = document.getElementById('req-search-input');
-  const searchResults = document.getElementById('req-search-results');
-
-  // Если потребность предзаполнена через ?req= — сохраняем label
-  {% if selected_req %}
-  document.getElementById('offer-form').dataset.reqLabel = searchInput.value;
-  {% endif %}
-
-  function showResults() {
-    if (searchResults.innerHTML.trim()) searchResults.style.display = 'block';
-  }
-  function hideResults() {
-    searchResults.style.display = 'none';
-  }
-
-  // После каждого HTMX-свапа в дропдаун — показываем/скрываем
-  document.addEventListener('htmx:afterSwap', function(e) {
-    if (e.detail.target.id === 'req-search-results') {
-      if (searchResults.innerHTML.trim()) {
-        showResults();
-      } else {
-        hideResults();
-      }
-    }
-  });
-
-  // Закрыть при клике вне
-  document.addEventListener('click', function(e) {
-    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-      hideResults();
-    }
-  });
-
-  // Закрыть при Escape
-  searchInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') hideResults();
-  });
-
-  function selectRequirement(id, label) {
-    document.getElementById('id_requirement').value = id;
-    searchInput.value = label;
-    document.getElementById('offer-form').dataset.reqLabel = label;
-    hideResults();
-    searchResults.innerHTML = '';
-  }
-</script>
 {% endblock %}

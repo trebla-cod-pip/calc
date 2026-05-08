@@ -292,8 +292,7 @@
                           font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
                           display:block;max-width:220px">${r.title}</a>
                 <span style="font-size:10px;color:var(--text-3)">
-                  вычет взносов · к уплате ${fmt(r.value)}
-                  ${sys ? ' · ' + sys : ''}
+                  вычет взносов${sys ? ' · ' + sys : ''}
                 </span>
               </div>
               <span style="${mono};font-size:13px;font-weight:700;color:var(--danger);white-space:nowrap">
