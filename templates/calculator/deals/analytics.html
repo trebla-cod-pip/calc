@@ -80,38 +80,6 @@
   </div>
 </div>
 
-<!-- Денежное правило -->
-{% if money_rule %}
-<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow-sm);margin-bottom:16px">
-  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">💡 Денежное правило</div>
-  <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">На основе ваших сделок за выбранный период — с каждых <b>1 000 ₽</b> выручки</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-    <div style="text-align:center;padding:10px 8px;border-radius:var(--r-lg);background:var(--good-soft);border:1px solid #bbf7d0">
-      <div style="font-size:10px;color:var(--good);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">В карман</div>
-      <div style="font-size:20px;font-weight:700;color:var(--good);font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ money_rule.profit_per_1k }} ₽</div>
-      <div style="font-size:10px;color:var(--text-3);margin-top:2px">{{ money_rule.profit_pct }}% маржа</div>
-    </div>
-    <div style="text-align:center;padding:10px 8px;border-radius:var(--r-lg);background:#fef2f2;border:1px solid #fca5a5">
-      <div style="font-size:10px;color:var(--danger);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">В налоговый резерв</div>
-      <div style="font-size:20px;font-weight:700;color:var(--danger);font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ money_rule.reserve_per_1k }} ₽</div>
-      <div style="font-size:10px;color:var(--text-3);margin-top:2px">налог + взносы</div>
-    </div>
-    <div style="text-align:center;padding:10px 8px;border-radius:var(--r-lg);background:var(--warn-soft);border:1px solid #fde68a">
-      <div style="font-size:10px;color:var(--amber);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Банк</div>
-      <div style="font-size:20px;font-weight:700;color:var(--amber);font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ money_rule.bank_per_1k }} ₽</div>
-      <div style="font-size:10px;color:var(--text-3);margin-top:2px">комиссия</div>
-    </div>
-    <div style="text-align:center;padding:10px 8px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--border)">
-      <div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Расходы</div>
-      <div style="font-size:20px;font-weight:700;color:var(--text);font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ money_rule.expense_pct }}%</div>
-      <div style="font-size:10px;color:var(--text-3);margin-top:2px">от выручки</div>
-    </div>
-  </div>
-  <div style="padding:10px 14px;border-radius:var(--r);background:var(--primary-soft);border:1px solid var(--primary-soft2);font-size:12px;color:var(--primary)">
-    📌 <b>Правило:</b> получил 1 000 ₽ — сразу отложи <b>{{ money_rule.reserve_per_1k }} ₽</b> в резерв на налоги и взносы, <b>{{ money_rule.profit_per_1k }} ₽</b> — чистая прибыль
-  </div>
-</div>
-{% endif %}
 
 <!-- Структура расходов — кликабельные строки -->
 <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px">
