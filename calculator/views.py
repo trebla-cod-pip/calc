@@ -690,13 +690,14 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
     annual_pool = float(ts.fixed_insurance_annual) if ts else 0.0
     current_year = _date.today().year
 
-    # Сумма всех вычетов, использованных в сделках за текущий год
-    deduction_used = sum(
-        max(0.0, float((d.gross_tax or 0) - (d.tax_amount or 0)))
-        for d in Deal.objects.exclude(status=Deal.STATUS_CANCELLED)
-                              .filter(created_at__year=current_year)
-        if (d.gross_tax or 0) > 0
+    # Взносы, оплаченные в сделках за текущий год (= использованный вычет)
+    from django.db.models import Sum as _Sum
+    insurance_paid = float(
+        Deal.objects.exclude(status=Deal.STATUS_CANCELLED)
+                    .filter(created_at__year=current_year)
+                    .aggregate(total=_Sum("insurance_amount"))["total"] or 0
     )
+    deduction_used = min(insurance_paid, annual_pool)
     deduction_remaining = annual_pool - deduction_used
 
     # Разбивка по сделкам для попапа — {field: [{title, pk, value}]}

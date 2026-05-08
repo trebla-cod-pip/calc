@@ -243,38 +243,50 @@
       rows.forEach(r => {
         total += r.value;
         let extra = '';
-        if (key === 'tax' && r.gross_tax > 0) {
+        if (key === 'tax') {
           const sys = TAX_LABELS[r.tax_system] || r.tax_system || '';
-          const ded = r.tax_deduction > 0 ? r.tax_deduction : 0;
+          const ded = (r.tax_deduction || 0) > 0 ? r.tax_deduction : 0;
+          const hasDetail = r.gross_tax > 0;
           const sysTag = sys
             ? `<span style="display:inline-block;padding:1px 6px;border-radius:4px;background:var(--primary-soft);color:var(--primary);font-size:10px;font-weight:600;margin-bottom:6px">${sys}</span><br>`
             : '';
-          const revLine = `<div style="font-size:11px;color:var(--text-3);margin-bottom:5px">выручка: <b>${fmt(r.revenue)}</b></div>`;
           let formula;
-          if (ded > 0) {
-            formula = `
-              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
-                <span style="color:var(--text-3);font-size:10px;font-family:inherit">начислено</span>
-                <span style="font-weight:700;color:var(--text)">${fmt(r.gross_tax)}</span>
-                <span style="color:var(--text-3);font-size:13px;font-weight:300">−</span>
-                <span style="color:var(--text-3);font-size:10px;font-family:inherit">вычет взносов</span>
-                <span style="font-weight:700;color:var(--good)">${fmt(ded)}</span>
-                <span style="color:var(--text-3);font-size:13px;font-weight:300">=</span>
-                <span style="color:var(--text-3);font-size:10px;font-family:inherit">к уплате</span>
-                <span style="font-weight:700;color:var(--text)">${fmt(r.value)}</span>
-              </div>`;
+          if (hasDetail && r.revenue > 0) {
+            const revLine = `<div style="font-size:11px;color:var(--text-3);margin-bottom:5px">выручка: <b>${fmt(r.revenue)}</b></div>`;
+            if (ded > 0) {
+              formula = revLine + `
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
+                  <span style="color:var(--text-3);font-size:10px">начислено</span>
+                  <b>${fmt(r.gross_tax)}</b>
+                  <span style="color:var(--text-3)">−</span>
+                  <span style="color:var(--text-3);font-size:10px">вычет взносов</span>
+                  <b style="color:var(--good)">${fmt(ded)}</b>
+                  <span style="color:var(--text-3)">=</span>
+                  <span style="color:var(--text-3);font-size:10px">к уплате</span>
+                  <b>${fmt(r.value)}</b>
+                </div>`;
+            } else {
+              formula = revLine + `
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
+                  <span style="color:var(--text-3);font-size:10px">начислено</span>
+                  <b>${fmt(r.gross_tax)}</b>
+                  <span style="color:var(--text-3)">=</span>
+                  <span style="color:var(--text-3);font-size:10px">к уплате</span>
+                  <b>${fmt(r.value)}</b>
+                </div>`;
+            }
           } else {
+            // gross_tax не задан — показываем минимум
             formula = `
-              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
-                <span style="color:var(--text-3);font-size:10px;font-family:inherit">начислено</span>
-                <span style="font-weight:700;color:var(--text)">${fmt(r.gross_tax)}</span>
-                <span style="color:var(--text-3);font-size:13px;font-weight:300">=</span>
-                <span style="color:var(--text-3);font-size:10px;font-family:inherit">к уплате</span>
-                <span style="font-weight:700;color:var(--text)">${fmt(r.value)}</span>
-              </div>`;
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
+                <span style="color:var(--text-3);font-size:10px">к уплате</span>
+                <b>${fmt(r.value)}</b>
+                ${r.revenue > 0 ? `<span style="color:var(--text-3);font-size:10px">(выручка ${fmt(r.revenue)})</span>` : ''}
+              </div>
+              <div style="font-size:10px;color:var(--text-3);margin-top:3px">⚠ нет данных о начислении — пересчитайте через калькулятор</div>`;
           }
           extra = `<div style="margin-top:5px;padding:8px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border)">
-            ${sysTag}${revLine}${formula}
+            ${sysTag}${formula}
           </div>`;
         }
         html += `<div class="modal-row" style="align-items:start">
@@ -302,15 +314,15 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
             <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Лимит за год</div>
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Фикс. взносы за год</div>
               <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--text)">${fmt(pool.annual)}</div>
             </div>
             <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Использовано</div>
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Оплачено взносов</div>
               <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--warn)">${fmt(pool.used)}</div>
             </div>
             <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Остаток</div>
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Ещё можно вычесть</div>
               <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${remainColor}">${fmt(pool.remaining)}</div>
             </div>
           </div>
