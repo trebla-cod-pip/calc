@@ -1,93 +1,92 @@
 {% load humanize %}
 
 {% comment %}
-  Партиал: плоская таблица всех КП с поиском и фильтрами.
+  Партиал: КП сгруппированные по потребности.
   hx-target="#all-offers-area"
 {% endcomment %}
 
-{% if all_offers %}
+{% if active_groups or archived_groups %}
 
-<!-- ── Панель поиска и фильтров ── -->
+<!-- ── Поиск ── -->
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-
   <div style="position:relative;flex:1;min-width:200px">
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"
          style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none">
       <circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l3 3"/>
     </svg>
-    <input id="offer-search" type="text" placeholder="Поиск по поставщику или потребности…"
-           oninput="filterOffers()"
+    <input id="offer-search" type="text" placeholder="Поиск по поставщику…"
+           oninput="filterOfferGroups()"
            style="width:100%;padding:8px 12px 8px 32px;border-radius:var(--r);border:1px solid var(--border);
                   background:var(--surface);font-size:13px;color:var(--text);outline:none;box-sizing:border-box"
            onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
   </div>
-
-  <select id="req-filter" onchange="filterOffers()"
-          style="height:36px;padding:0 10px;border-radius:var(--r);border:1px solid var(--border);
-                 background:var(--surface);font-size:13px;color:var(--text);cursor:pointer;max-width:220px">
-    <option value="">Все потребности</option>
-    {% for req in requirements %}
-    <option value="{{ req.pk }}">{{ req.short_name|default:req.name }}</option>
-    {% endfor %}
-  </select>
-
-  <select id="sort-filter" onchange="sortOffers()"
-          style="height:36px;padding:0 10px;border-radius:var(--r);border:1px solid var(--border);
-                 background:var(--surface);font-size:13px;color:var(--text);cursor:pointer">
-    <option value="req">По потребности</option>
-    <option value="price_asc">Цена ↑</option>
-    <option value="price_desc">Цена ↓</option>
-    <option value="days">Срок ↑</option>
-  </select>
-
-  <div id="offers-count"
-       style="font-size:12px;color:var(--text-3);white-space:nowrap;padding:0 4px">
+  <div id="offers-count" style="font-size:12px;color:var(--text-3);white-space:nowrap;padding:0 4px">
     {{ all_offers|length }} КП
   </div>
 </div>
 
-<!-- ── Таблица ── -->
-<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden">
-  <table id="offers-table" style="width:100%;font-size:13px;border-collapse:collapse">
+<!-- ── Активные потребности ── -->
+{% for group in active_groups %}
+<div class="offer-group" data-group-id="{{ group.req.pk }}"
+     style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+            overflow:hidden;margin-bottom:12px">
+
+  <!-- Заголовок потребности -->
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:11px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);
+              gap:12px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;min-width:0">
+      <span style="font-size:13px;font-weight:600;color:var(--text);
+                   white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+            title="{{ group.req.name }}">
+        {{ group.req.short_name|default:group.req.name }}
+      </span>
+      <span style="font-size:11px;color:var(--text-3);white-space:nowrap">
+        {{ group.req.quantity }} {{ group.req.unit }}
+      </span>
+      <span style="font-size:11px;padding:2px 7px;border-radius:999px;
+                   background:{% if group.offers %}#dbeafe{% else %}var(--surface){% endif %};
+                   color:{% if group.offers %}#1d4ed8{% else %}var(--text-3){% endif %};
+                   border:1px solid {% if group.offers %}#bfdbfe{% else %}var(--border){% endif %}">
+        {{ group.offers|length }} КП
+      </span>
+    </div>
+    {% if group.offers %}
+    <div style="font-size:12px;color:var(--text-3)">
+      лучшая:
+      <span style="font-weight:600;color:#15803d;font-family:'IBM Plex Mono',monospace">
+        {{ group.offers.0.total_price|floatformat:0|intcomma }} ₽
+      </span>
+      — {{ group.offers.0.supplier_name }}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if group.offers %}
+  <table style="width:100%;font-size:13px;border-collapse:collapse">
     <thead>
-      <tr style="border-bottom:1px solid var(--border);background:var(--surface-2)">
-        <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Потребность</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Поставщик</th>
-        <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Цена/шт, ₽</th>
-        <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Итого, ₽</th>
-        <th style="padding:9px 12px;text-align:center;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Срок</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Ссылка</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Комментарий</th>
-        <th style="padding:9px 10px;background:var(--surface-2)"></th>
+      <tr style="border-bottom:1px solid var(--border)">
+        <th style="padding:7px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Поставщик</th>
+        <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Цена/шт</th>
+        <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Итого</th>
+        <th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Срок</th>
+        <th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Ссылка / файл</th>
+        <th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Комментарий</th>
+        <th style="padding:7px 8px"></th>
       </tr>
     </thead>
-    <tbody id="offers-tbody">
-    {% for offer in all_offers %}
-    {% with is_best=offer.pk|stringformat:"s" %}
+    <tbody>
+    {% for offer in group.offers %}
     <tr id="offer-row-{{ offer.pk }}"
-        data-req-id="{{ offer.requirement.pk }}"
-        data-req-name="{{ offer.requirement.name|lower }}"
         data-supplier="{{ offer.supplier_name|lower }}"
-        data-price="{{ offer.price_per_unit }}"
-        data-days="{{ offer.delivery_days|default:9999 }}"
-        style="border-bottom:1px solid var(--border);{% if offer.pk in best_pks %}background:#f0fdf4;{% endif %}transition:background .1s"
+        style="border-bottom:1px solid var(--border);
+               {% if offer.pk in best_pks %}background:#f0fdf4;{% endif %}transition:background .1s"
         data-best="{% if offer.pk in best_pks %}1{% else %}0{% endif %}"
         onmouseover="if(this.dataset.best!=='1')this.style.background='var(--surface-2)'"
         onmouseout="this.style.background=this.dataset.best==='1'?'#f0fdf4':'transparent'">
 
-      <!-- Потребность -->
-      <td style="padding:9px 14px;max-width:180px">
-        <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
-             title="{{ offer.requirement.name }}">
-          {{ offer.requirement.short_name|default:offer.requirement.name }}
-        </div>
-        <div style="font-size:11px;color:var(--text-3)">
-          {{ offer.requirement.quantity }} {{ offer.requirement.unit }}
-        </div>
-      </td>
-
       <!-- Поставщик -->
-      <td style="padding:9px 12px;max-width:160px">
+      <td style="padding:8px 14px;max-width:160px">
         <div style="display:flex;align-items:center;gap:6px">
           {% if offer.pk in best_pks %}
           <span style="display:inline-flex;align-items:center;justify-content:center;
@@ -96,27 +95,27 @@
                 title="Лучшая цена">★</span>
           {% endif %}
           <span style="font-weight:500;color:{% if offer.pk in best_pks %}#15803d{% else %}var(--text){% endif %};
-                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px"
+                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px"
                 title="{{ offer.supplier_name }}">{{ offer.supplier_name }}</span>
         </div>
       </td>
 
       <!-- Цена/шт -->
-      <td style="padding:9px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;
+      <td style="padding:8px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;
                  font-size:12.5px;color:{% if offer.pk in best_pks %}#15803d{% else %}var(--text-2){% endif %};
                  {% if offer.pk in best_pks %}font-weight:600{% endif %}">
-        {{ offer.price_per_unit|floatformat:2|intcomma }}
+        {{ offer.price_per_unit|floatformat:2|intcomma }} ₽
       </td>
 
       <!-- Итого -->
-      <td style="padding:9px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;
+      <td style="padding:8px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;
                  font-size:12.5px;font-weight:700;
                  color:{% if offer.pk in best_pks %}#15803d{% else %}var(--text){% endif %}">
-        {{ offer.total_price|floatformat:0|intcomma }}
+        {{ offer.total_price|floatformat:0|intcomma }} ₽
       </td>
 
       <!-- Срок -->
-      <td style="padding:9px 12px;text-align:center">
+      <td style="padding:8px 10px;text-align:center">
         {% if offer.delivery_days %}
         <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;
                      font-size:12px;font-weight:500;
@@ -130,20 +129,31 @@
         {% endif %}
       </td>
 
-      <!-- Ссылка -->
-      <td style="padding:9px 12px">
-        {% if offer.link %}
-        <a href="{{ offer.link }}" target="_blank" rel="noopener"
-           style="font-size:12px;color:var(--primary);text-decoration:underline;text-underline-offset:2px">
-          ссылка ↗
-        </a>
-        {% else %}
-        <span style="color:var(--text-3);font-size:12px">—</span>
-        {% endif %}
+      <!-- Ссылка / файл -->
+      <td style="padding:8px 10px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          {% if offer.link %}
+          <a href="{{ offer.link }}" target="_blank" rel="noopener"
+             style="font-size:12px;color:var(--primary);text-decoration:underline;text-underline-offset:2px;white-space:nowrap">
+            ссылка ↗
+          </a>
+          {% endif %}
+          {% if offer.file %}
+          <a href="{{ offer.file.url }}" target="_blank" rel="noopener"
+             title="{{ offer.file.name|cut:'offers/' }}"
+             style="display:inline-flex;align-items:center;gap:3px;font-size:12px;
+                    color:#6366f1;text-decoration:none;white-space:nowrap">
+            📎 файл
+          </a>
+          {% endif %}
+          {% if not offer.link and not offer.file %}
+          <span style="color:var(--text-3);font-size:12px">—</span>
+          {% endif %}
+        </div>
       </td>
 
       <!-- Комментарий -->
-      <td style="padding:9px 12px;max-width:140px">
+      <td style="padding:8px 10px;max-width:140px">
         {% if offer.comment %}
         <span style="font-size:12px;color:var(--text-2);display:-webkit-box;
                      -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"
@@ -154,8 +164,8 @@
       </td>
 
       <!-- Действия -->
-      <td style="padding:9px 10px;text-align:center">
-        <div style="display:flex;align-items:center;justify-content:center;gap:3px">
+      <td style="padding:8px 8px;text-align:center">
+        <div style="display:flex;align-items:center;justify-content:center;gap:2px">
           <button hx-get="{% url 'calculator:offer_edit' offer.pk %}"
                   hx-target="#offer-row-{{ offer.pk }}"
                   hx-swap="outerHTML"
@@ -188,56 +198,120 @@
         </div>
       </td>
     </tr>
-    {% endwith %}
     {% endfor %}
     </tbody>
   </table>
+  {% else %}
+  <div style="padding:16px 16px;font-size:13px;color:var(--text-3)">Нет КП — добавьте первое</div>
+  {% endif %}
 </div>
+{% empty %}
+{% endfor %}
 
-<!-- Пустое состояние при поиске -->
-<div id="offers-empty" style="display:none;text-align:center;padding:32px;color:var(--text-3);font-size:13px">
-  Ничего не найдено — попробуйте другой запрос
-</div>
+<!-- ── Архивные потребности (если есть КП) ── -->
+{% if archived_groups %}
+<details style="margin-top:8px">
+  <summary style="font-size:13px;font-weight:600;color:var(--text-3);cursor:pointer;
+                  padding:10px 4px;user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
+         style="transition:transform .15s" class="arch-arrow">
+      <path d="M4 6l4 4 4-4"/>
+    </svg>
+    📦 Архивные потребности — {{ archived_groups|length }} с КП
+  </summary>
+
+  <div style="margin-top:8px">
+  {% for group in archived_groups %}
+  <div class="offer-group" data-group-id="{{ group.req.pk }}"
+       style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+              overflow:hidden;margin-bottom:10px;opacity:.8">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:10px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);gap:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;padding:1px 7px;border-radius:4px;
+                     background:#f3f4f6;color:#6b7280;font-weight:500">архив</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text-2)"
+              title="{{ group.req.name }}">
+          {{ group.req.short_name|default:group.req.name }}
+        </span>
+        <span style="font-size:11px;color:var(--text-3)">{{ group.req.quantity }} {{ group.req.unit }}</span>
+      </div>
+      <span style="font-size:12px;color:var(--text-3)">{{ group.offers|length }} КП</span>
+    </div>
+
+    <table style="width:100%;font-size:13px;border-collapse:collapse">
+      <tbody>
+      {% for offer in group.offers %}
+      <tr id="offer-row-{{ offer.pk }}"
+          data-supplier="{{ offer.supplier_name|lower }}"
+          style="border-bottom:1px solid var(--border);
+                 {% if offer.pk in best_pks %}background:#f0fdf4;{% endif %}"
+          data-best="{% if offer.pk in best_pks %}1{% else %}0{% endif %}">
+        <td style="padding:8px 14px;font-weight:500;color:var(--text-2)">{{ offer.supplier_name }}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text-2)">
+          {{ offer.price_per_unit|floatformat:2|intcomma }} ₽
+        </td>
+        <td style="padding:8px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:700;color:var(--text)">
+          {{ offer.total_price|floatformat:0|intcomma }} ₽
+        </td>
+        <td style="padding:8px 10px">
+          {% if offer.file %}
+          <a href="{{ offer.file.url }}" target="_blank" rel="noopener"
+             style="font-size:12px;color:#6366f1">📎 файл</a>
+          {% elif offer.link %}
+          <a href="{{ offer.link }}" target="_blank" rel="noopener"
+             style="font-size:12px;color:var(--primary)">ссылка ↗</a>
+          {% else %}
+          <span style="color:var(--text-3);font-size:12px">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:8px 8px;text-align:center">
+          <button hx-post="{% url 'calculator:supplier_offer_delete' offer.pk %}"
+                  hx-target="#all-offers-area"
+                  hx-swap="innerHTML"
+                  hx-confirm="Удалить КП от «{{ offer.supplier_name|escapejs }}»?"
+                  style="display:inline-flex;align-items:center;justify-content:center;
+                         width:28px;height:28px;border-radius:var(--r-sm);
+                         background:transparent;border:none;cursor:pointer;
+                         color:var(--text-3)"
+                  onmouseover="this.style.color='var(--danger)'"
+                  onmouseout="this.style.color='var(--text-3)'"
+                  title="Удалить">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M3 4h10M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M6 7v5M10 7v5M4 4l.5 9a1 1 0 0 0 1 .9h5a1 1 0 0 0 1-.9L12 4"/>
+            </svg>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+  </div>
+</details>
+{% endif %}
 
 <script>
-  function filterOffers() {
+  function filterOfferGroups() {
     const q = (document.getElementById('offer-search')?.value || '').toLowerCase().trim();
-    const reqId = document.getElementById('req-filter')?.value || '';
-    const rows = document.querySelectorAll('#offers-tbody tr');
-    let visible = 0;
-    rows.forEach(row => {
-      const matchQ = !q ||
-        (row.dataset.supplier || '').includes(q) ||
-        (row.dataset.reqName || '').includes(q);
-      const matchReq = !reqId || row.dataset.reqId === reqId;
-      const show = matchQ && matchReq;
-      row.style.display = show ? '' : 'none';
-      if (show) visible++;
+    let total = 0;
+    document.querySelectorAll('#offers-tbody tr, .offer-group tbody tr').forEach(row => {
+      const match = !q || (row.dataset.supplier || '').includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) total++;
     });
     const el = document.getElementById('offers-count');
-    if (el) el.textContent = visible + ' КП';
-    const empty = document.getElementById('offers-empty');
-    const table = document.getElementById('offers-table');
-    if (empty && table) {
-      empty.style.display = visible === 0 ? 'block' : 'none';
-      table.style.display = visible === 0 ? 'none' : '';
-    }
+    if (el) el.textContent = total + ' КП';
   }
-
-  function sortOffers() {
-    const val = document.getElementById('sort-filter')?.value || 'req';
-    const tbody = document.getElementById('offers-tbody');
-    if (!tbody) return;
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.sort((a, b) => {
-      if (val === 'price_asc') return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
-      if (val === 'price_desc') return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
-      if (val === 'days') return parseInt(a.dataset.days) - parseInt(b.dataset.days);
-      // default: по потребности
-      return (a.dataset.reqName || '').localeCompare(b.dataset.reqName || '', 'ru');
+  // Анимация стрелки у details
+  document.querySelectorAll('details').forEach(d => {
+    d.addEventListener('toggle', () => {
+      const arr = d.querySelector('.arch-arrow');
+      if (arr) arr.style.transform = d.open ? 'rotate(180deg)' : '';
     });
-    rows.forEach(r => tbody.appendChild(r));
-  }
+  });
 </script>
 
 {% else %}
@@ -246,7 +320,7 @@
   <div style="font-size:36px;margin-bottom:12px">📋</div>
   <p style="font-size:14px;font-weight:500;color:var(--text-2);margin:0 0 6px">КП пока нет</p>
   <p style="font-size:13px;margin:0 0 16px">
-    Добавьте первое коммерческое предложение с помощью формы слева.
+    Добавьте первое коммерческое предложение через потребности.
   </p>
   <a href="{% url 'calculator:requirements' %}" class="btn-primary" style="display:inline-flex">
     Перейти к потребностям →

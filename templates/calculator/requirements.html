@@ -155,7 +155,8 @@
       <form id="offer-modal-form"
             hx-post=""
             hx-target="#offer-modal-inner"
-            hx-swap="innerHTML">
+            hx-swap="innerHTML"
+            hx-encoding="multipart/form-data">
         {% csrf_token %}
 
         <div id="offer-modal-errors"></div>
@@ -201,13 +202,23 @@
         </div>
 
         <!-- Комментарий -->
-        <div style="margin-bottom:16px">
+        <div style="margin-bottom:12px">
           <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px">
             Комментарий
           </label>
           <textarea name="comment" id="om-comment" rows="2"
                     placeholder="Доп. условия, контакты…"
                     class="form-input" style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+        </div>
+
+        <!-- Файл -->
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px">
+            📎 Прикрепить файл
+          </label>
+          <input name="file" type="file" id="om-file"
+                 style="font-size:12px;color:#374151;width:100%;box-sizing:border-box;
+                        padding:6px 0;cursor:pointer">
         </div>
 
         <div style="display:flex;align-items:center;gap:10px">

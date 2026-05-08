@@ -209,22 +209,49 @@ def calculate(request: HttpRequest) -> HttpResponse:
 # КП поставщиков (единая страница)
 # ─────────────────────────────────────────────────────
 
-def _build_offers_context() -> dict:
-    """Возвращает плоский список КП + set pk лучших предложений."""
-    from calculator.models import SupplierOffer as _SO
-    requirements = Requirement.objects.prefetch_related("offers").filter(is_archived=False)
-    all_offers = _SO.objects.select_related("requirement").order_by(
-        "requirement__name", "price_per_unit"
-    )
+def _build_offers_context(selected_req=None) -> dict:
+    """
+    Возвращает КП, сгруппированные по потребности.
+    active_groups  — активные потребности с КП (или без, если selected_req задан)
+    archived_groups — архивные потребности у которых есть КП
+    best_pks        — set pk лучших предложений
+    """
+    active_reqs   = Requirement.objects.prefetch_related("offers").filter(is_archived=False).order_by("name")
+    archived_reqs = Requirement.objects.prefetch_related("offers").filter(is_archived=True).order_by("name")
+
     best_pks: set = set()
-    for req in requirements:
+    for req in list(active_reqs) + list(archived_reqs):
         best = req.best_offer
         if best:
             best_pks.add(best.pk)
+
+    if selected_req:
+        reqs_to_show = [selected_req]
+    else:
+        reqs_to_show = list(active_reqs)
+
+    active_groups = [
+        {"req": r, "offers": list(r.offers.order_by("total_price"))}
+        for r in reqs_to_show
+    ]
+    archived_groups = [
+        {"req": r, "offers": list(r.offers.order_by("total_price"))}
+        for r in archived_reqs
+        if r.offers.exists()
+    ]
+
+    # плоский список для JS-фильтров и совместимости с offer_edit
+    all_offers = list(SupplierOffer.objects.select_related("requirement").order_by(
+        "requirement__name", "total_price"
+    ))
+
     return {
-        "requirements": requirements,
-        "all_offers": all_offers,
-        "best_pks": best_pks,
+        "active_groups":   active_groups,
+        "archived_groups": archived_groups,
+        "all_offers":      all_offers,
+        "best_pks":        best_pks,
+        "requirements":    active_reqs,
+        "selected_req":    selected_req,
     }
 
 
@@ -237,7 +264,7 @@ def offers_list(request: HttpRequest) -> HttpResponse:
     selected_req = None
 
     if request.method == "POST":
-        form = SupplierOfferForm(request.POST)
+        form = SupplierOfferForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             if request.headers.get("HX-Request"):
@@ -257,8 +284,8 @@ def offers_list(request: HttpRequest) -> HttpResponse:
         initial = {"requirement": selected_req} if selected_req else {}
         form = SupplierOfferForm(initial=initial)
 
-    ctx = _build_offers_context()
-    ctx.update({"form": form, "selected_req": selected_req})
+    ctx = _build_offers_context(selected_req=selected_req)
+    ctx.update({"form": form})
     return render(request, "calculator/offers.html", ctx)
 
 
@@ -840,7 +867,7 @@ def offer_add(request: HttpRequest, req_pk: int) -> HttpResponse:
     req = get_object_or_404(Requirement, pk=req_pk)
     data = request.POST.copy()
     data["requirement"] = str(req_pk)
-    form = SupplierOfferForm(data)
+    form = SupplierOfferForm(data, request.FILES)
     if form.is_valid():
         form.save()
         req.refresh_from_db()

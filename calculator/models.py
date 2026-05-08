@@ -162,6 +162,7 @@ class SupplierOffer(models.Model):
     )
     link = models.URLField("Ссылка на товар / КП", blank=True)
     comment = models.TextField("Комментарий", blank=True)
+    file = models.FileField("Файл КП", upload_to="offers/", blank=True, null=True)
     created_at = models.DateTimeField("Добавлено", auto_now_add=True)
 
     class Meta:

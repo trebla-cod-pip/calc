@@ -347,11 +347,11 @@ class SupplierOfferForm(forms.ModelForm):
 
     class Meta:
         model = SupplierOffer
-        fields = ["requirement", "supplier_name", "price_per_unit", "delivery_days", "link", "comment"]
+        fields = ["requirement", "supplier_name", "price_per_unit", "delivery_days", "link", "comment", "file"]
         widgets = {
             "supplier_name": forms.TextInput(attrs={
                 "class": "form-input",
-                "placeholder": "ООО Ромашка / Wildberries / Alibaba",
+                "placeholder": "ООО Ромашка",
             }),
             "price_per_unit": forms.NumberInput(attrs={
                 "class": "form-input",
