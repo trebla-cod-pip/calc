@@ -182,6 +182,7 @@ class Delivery(models.Model):
     """Поставка — набор потребностей для совместного расчёта."""
     name = models.CharField("Название поставки", max_length=200)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
+    is_archived = models.BooleanField("В архиве", default=False)
 
     class Meta:
         verbose_name = "Поставка"

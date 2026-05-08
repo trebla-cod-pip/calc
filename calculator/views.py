@@ -379,11 +379,17 @@ def search_requirements(request: HttpRequest) -> HttpResponse:
 # ─────────────────────────────────────────────────────
 
 def delivery_list(request: HttpRequest) -> HttpResponse:
-    """Список всех поставок."""
+    """Список всех поставок (активных или архивных)."""
+    show_archived = request.GET.get("archived") == "1"
     deliveries = Delivery.objects.prefetch_related(
         "items__requirement", "items__selected_offer"
-    ).all()
-    return render(request, "calculator/deliveries.html", {"deliveries": deliveries})
+    ).filter(is_archived=show_archived)
+    archived_count = Delivery.objects.filter(is_archived=True).count()
+    return render(request, "calculator/deliveries.html", {
+        "deliveries": deliveries,
+        "show_archived": show_archived,
+        "archived_count": archived_count,
+    })
 
 
 @require_http_methods(["POST"])
@@ -582,11 +588,22 @@ def deal_detail(request: HttpRequest, pk: int) -> HttpResponse:
     })
 
 
-def _archive_deal_requirements(deal: Deal) -> None:
-    """Архивирует все потребности из поставки сделки."""
+def _archive_deal_resources(deal: Deal) -> None:
+    """Архивирует поставку и все её потребности при закрытии сделки."""
     if deal.delivery:
+        # Архивируем потребности
         req_ids = deal.delivery.items.values_list("requirement_id", flat=True)
         Requirement.objects.filter(pk__in=req_ids).update(is_archived=True)
+        # Архивируем саму поставку
+        deal.delivery.is_archived = True
+        deal.delivery.save(update_fields=["is_archived"])
+
+
+# Обратная совместимость
+_archive_deal_requirements = _archive_deal_resources
+
+# Статусы, при которых сделка считается завершённой → архивируем ресурсы
+DEAL_ARCHIVE_STATUSES = {Deal.STATUS_PAID, Deal.STATUS_CANCELLED}
 
 
 @require_http_methods(["POST"])
@@ -597,8 +614,8 @@ def deal_update_status(request: HttpRequest, pk: int) -> HttpResponse:
     if new_status in dict(Deal.STATUS_CHOICES):
         deal.status = new_status
         deal.save(update_fields=["status"])
-        if new_status == Deal.STATUS_PAID:
-            _archive_deal_requirements(deal)
+        if new_status in DEAL_ARCHIVE_STATUSES:
+            _archive_deal_resources(deal)
     return render(request, "calculator/deals/partials/status_badge.html", {"deal": deal})
 
 
@@ -687,15 +704,13 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
     annual_pool = float(ts.fixed_insurance_annual) if ts else 0.0
     current_year = _date.today().year
 
-    # Взносы, оплаченные в сделках за текущий год (= использованный вычет)
-    from django.db.models import Sum as _Sum
-    insurance_paid = float(
-        Deal.objects.exclude(status=Deal.STATUS_CANCELLED)
-                    .filter(created_at__year=current_year)
-                    .aggregate(total=_Sum("insurance_amount"))["total"] or 0
+    # Реально использованный вычет = сумма (gross_tax − tax_amount) по сделкам года
+    deduction_used = sum(
+        max(0.0, float((d.gross_tax or 0) - (d.tax_amount or 0)))
+        for d in Deal.objects.exclude(status=Deal.STATUS_CANCELLED)
+                              .filter(created_at__year=current_year)
     )
-    deduction_used = min(insurance_paid, annual_pool)
-    deduction_remaining = annual_pool - deduction_used
+    deduction_remaining = max(0.0, annual_pool - deduction_used)
 
     # Разбивка по сделкам для попапа — {field: [{title, pk, value}]}
     breakdown_fields = {

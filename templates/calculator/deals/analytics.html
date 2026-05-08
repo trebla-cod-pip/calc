@@ -238,94 +238,134 @@
       document.getElementById('modal-body').innerHTML =
         '<div style="text-align:center;color:var(--text-3);padding:24px;font-size:13px">Нет данных</div>';
     } else {
-      let total = 0;
-      let html = '';
-      rows.forEach(r => {
-        total += r.value;
-        let extra = '';
-        if (key === 'tax') {
-          const sys = TAX_LABELS[r.tax_system] || r.tax_system || '';
-          // Если gross_tax не сохранён — считаем что вычета не было (gross_tax = tax_amount)
-          const grossTax = r.gross_tax > 0 ? r.gross_tax : r.value;
-          const ded = r.gross_tax > 0 && r.tax_deduction > 0 ? r.tax_deduction : 0;
-          const sysTag = sys
-            ? `<span style="display:inline-block;padding:1px 6px;border-radius:4px;background:var(--primary-soft);color:var(--primary);font-size:10px;font-weight:600;margin-bottom:6px">${sys}</span><br>`
-            : '';
-          const revLine = r.revenue > 0
-            ? `<div style="font-size:11px;color:var(--text-3);margin-bottom:5px">выручка: <b>${fmt(r.revenue)}</b></div>`
-            : '';
-          let formula;
-          if (ded > 0) {
-            formula = revLine + `
-              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
-                <span style="color:var(--text-3);font-size:10px">начислено</span>
-                <b>${fmt(grossTax)}</b>
-                <span style="color:var(--text-3)">−</span>
-                <span style="color:var(--text-3);font-size:10px">вычет взносов</span>
-                <b style="color:var(--good)">${fmt(ded)}</b>
-                <span style="color:var(--text-3)">=</span>
-                <span style="color:var(--text-3);font-size:10px">к уплате</span>
-                <b>${fmt(r.value)}</b>
-              </div>`;
-          } else {
-            formula = revLine + `
-              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
-                <span style="color:var(--text-3);font-size:10px">начислено</span>
-                <b>${fmt(grossTax)}</b>
-                <span style="color:var(--text-3)">=</span>
-                <span style="color:var(--text-3);font-size:10px">к уплате</span>
-                <b>${fmt(r.value)}</b>
-              </div>`;
-          }
-          extra = `<div style="margin-top:5px;padding:8px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border)">
-            ${sysTag}${formula}
-          </div>`;
-        }
-        html += `<div class="modal-row" style="align-items:start">
-          <div class="modal-deal-name">
-            <a href="/calculator/deals/${r.pk}/" target="_blank">${r.title}</a>
-            ${extra}
-          </div>
-          <div class="modal-deal-val">${fmt(r.value)}</div>
-        </div>`;
-      });
-      html += `<div class="modal-total">
-        <span>Итого</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">${fmt(total)}</span>
-      </div>`;
-
-      // Блок пула вычета взносов — только для налога
+      // ── Налог: каскадная формула пула ─────────────────────────────
       if (key === 'tax' && data.pool) {
         const pool = data.pool;
+        const mono = "font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums";
+        const remainColor = pool.remaining <= 0 ? 'var(--danger)'
+                          : pool.remaining < pool.annual * 0.2 ? 'var(--warn)'
+                          : 'var(--good)';
         const usedPct = pool.annual > 0 ? Math.min(100, Math.round(pool.used / pool.annual * 100)) : 0;
-        const remainColor = pool.remaining <= 0 ? 'var(--danger)' : pool.remaining < pool.annual * 0.2 ? 'var(--warn)' : 'var(--good)';
-        html += `<div style="margin-top:14px;padding:14px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--border)">
-          <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">
-            🛡️ Пул вычета страховых взносов ${pool.year}
-            ${pool.ts_year && pool.ts_year !== pool.year ? `<span style="font-weight:400;color:var(--warn)">(настройки за ${pool.ts_year})</span>` : ''}
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-            <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Фикс. взносы за год</div>
-              <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--text)">${fmt(pool.annual)}</div>
-            </div>
-            <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Оплачено взносов</div>
-              <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--warn)">${fmt(pool.used)}</div>
-            </div>
-            <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Ещё можно вычесть</div>
-              <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${remainColor}">${fmt(pool.remaining)}</div>
-            </div>
-          </div>
-          <div style="height:6px;background:var(--border);border-radius:999px;overflow:hidden">
-            <div style="height:100%;width:${usedPct}%;background:${usedPct >= 100 ? 'var(--danger)' : usedPct >= 80 ? 'var(--warn)' : 'var(--primary)'};border-radius:999px;transition:width .3s"></div>
-          </div>
-          <div style="font-size:10px;color:var(--text-3);margin-top:5px;text-align:right">${usedPct}% использовано</div>
-        </div>`;
-      }
 
-      document.getElementById('modal-body').innerHTML = html;
+        let html = `
+          <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;
+                      letter-spacing:.07em;margin-bottom:12px">
+            🛡️ Пул вычета страховых взносов ${pool.year}
+            ${pool.ts_year && pool.ts_year !== pool.year
+              ? `<span style="font-weight:400;color:var(--warn);text-transform:none">(настройки за ${pool.ts_year})</span>` : ''}
+          </div>
+
+          <!-- Стартовая строка -->
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      padding:10px 12px;border-radius:var(--r);background:var(--surface-2);
+                      border:1px solid var(--border);margin-bottom:4px">
+            <span style="font-size:12px;color:var(--text-2)">📋 Фиксированные взносы ИП за год</span>
+            <span style="${mono};font-size:13px;font-weight:700;color:var(--text)">${fmt(pool.annual)}</span>
+          </div>`;
+
+        // Каскадные строки по сделкам
+        let running = pool.annual;
+        rows.forEach(r => {
+          const ded = r.gross_tax > 0 && r.tax_deduction > 0 ? r.tax_deduction : 0;
+          if (ded <= 0) return; // сделки без вычета — в отдельный список ниже
+          running -= ded;
+          const afterColor = running <= 0 ? 'var(--danger)' : running < pool.annual * 0.2 ? 'var(--warn)' : 'var(--good)';
+          const sys = TAX_LABELS[r.tax_system] || r.tax_system || '';
+          const tooltip = [
+            sys,
+            r.revenue > 0 ? `выручка ${fmt(r.revenue)}` : '',
+            `начислено ${fmt(r.gross_tax)}`,
+            `к уплате ${fmt(r.value)}`,
+          ].filter(Boolean).join(' · ');
+
+          html += `
+            <!-- Стрелка вниз -->
+            <div style="text-align:center;color:var(--text-3);font-size:11px;line-height:1;padding:2px 0">↓</div>
+            <!-- Строка сделки -->
+            <div style="display:flex;align-items:center;justify-content:space-between;
+                        padding:9px 12px;border-radius:var(--r);background:var(--surface);
+                        border:1px solid var(--border);margin-bottom:2px;cursor:default"
+                 title="${tooltip}">
+              <div style="min-width:0">
+                <a href="/calculator/deals/${r.pk}/" target="_blank"
+                   style="font-size:13px;color:var(--primary);text-decoration:none;
+                          font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                          display:block;max-width:220px">${r.title}</a>
+                <span style="font-size:10px;color:var(--text-3)">
+                  вычет взносов · к уплате ${fmt(r.value)}
+                  ${sys ? ' · ' + sys : ''}
+                </span>
+              </div>
+              <span style="${mono};font-size:13px;font-weight:700;color:var(--danger);white-space:nowrap">
+                −${fmt(ded)}
+              </span>
+            </div>
+            <!-- Остаток после -->
+            <div style="text-align:right;font-size:11px;padding:2px 4px;color:${afterColor};
+                        ${mono};margin-bottom:2px">
+              остаток: ${fmt(Math.max(0, running))}
+            </div>`;
+        });
+
+        // Итоговая строка
+        html += `
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      padding:10px 12px;border-radius:var(--r-lg);
+                      background:var(--surface-2);border:1px solid var(--border);
+                      margin-top:8px">
+            <span style="font-size:12px;font-weight:600;color:var(--text-2)">Остаток пула</span>
+            <span style="${mono};font-size:15px;font-weight:700;color:${remainColor}">${fmt(pool.remaining)}</span>
+          </div>
+          <!-- Прогресс-бар -->
+          <div style="height:5px;background:var(--border);border-radius:999px;overflow:hidden;margin-top:10px">
+            <div style="height:100%;width:${usedPct}%;
+                        background:${usedPct>=100?'var(--danger)':usedPct>=80?'var(--warn)':'var(--primary)'};
+                        border-radius:999px"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:4px;text-align:right">
+            ${usedPct}% пула использовано
+          </div>`;
+
+        // Сделки без данных о вычете — списком под чертой
+        const noData = rows.filter(r => !(r.gross_tax > 0 && r.tax_deduction > 0));
+        if (noData.length) {
+          html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">
+              Сделки без данных о вычете (нет gross_tax):
+            </div>`;
+          noData.forEach(r => {
+            html += `<div style="display:flex;justify-content:space-between;padding:6px 10px;
+                                 font-size:12px;border-radius:var(--r);background:var(--surface-2);
+                                 margin-bottom:3px">
+              <a href="/calculator/deals/${r.pk}/" target="_blank"
+                 style="color:var(--primary);text-decoration:none">${r.title}</a>
+              <span style="${mono};color:var(--text)">${fmt(r.value)}</span>
+            </div>`;
+          });
+          html += '</div>';
+        }
+
+        document.getElementById('modal-body').innerHTML = html;
+
+      // ── Остальные категории: стандартный список ────────────────────
+      } else {
+        let total = 0;
+        let html = '';
+        rows.forEach(r => {
+          total += r.value;
+          html += `<div class="modal-row">
+            <div class="modal-deal-name">
+              <a href="/calculator/deals/${r.pk}/" target="_blank">${r.title}</a>
+            </div>
+            <div class="modal-deal-val">${fmt(r.value)}</div>
+          </div>`;
+        });
+        html += `<div class="modal-total">
+          <span>Итого</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">${fmt(total)}</span>
+        </div>`;
+        document.getElementById('modal-body').innerHTML = html;
+      }
     }
     document.getElementById('modal-overlay').classList.add('open');
   }

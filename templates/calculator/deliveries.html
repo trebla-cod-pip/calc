@@ -6,16 +6,33 @@
 {% block content %}
 <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
   <div>
-    <h1 class="text-2xl font-bold text-gray-900">Мои поставки</h1>
+    <h1 class="text-2xl font-bold text-gray-900">
+      {% if show_archived %}Архив поставок{% else %}Мои поставки{% endif %}
+    </h1>
     <p class="text-sm text-gray-500 mt-1">
       Поставки создаются из выбранных потребностей на странице
       <a href="{% url 'calculator:requirements' %}" class="text-blue-500 hover:underline">Потребности →</a>
     </p>
   </div>
-  <a href="{% url 'calculator:requirements' %}"
-     class="btn-primary text-sm whitespace-nowrap">
-    + Создать поставку
-  </a>
+  <div class="flex items-center gap-2">
+    {% if show_archived %}
+      <a href="{% url 'calculator:delivery_list' %}"
+         class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition">
+        ← Активные
+      </a>
+    {% else %}
+      {% if archived_count %}
+      <a href="?archived=1"
+         class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 transition">
+        📦 Архив <span class="ml-1 bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5 text-xs">{{ archived_count }}</span>
+      </a>
+      {% endif %}
+      <a href="{% url 'calculator:requirements' %}"
+         class="btn-primary text-sm whitespace-nowrap">
+        + Создать поставку
+      </a>
+    {% endif %}
+  </div>
 </div>
 
 {% if deliveries %}
