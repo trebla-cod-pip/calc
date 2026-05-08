@@ -120,6 +120,10 @@ class Requirement(models.Model):
         help_text="шт., кг, м, л, уп. и т.д.",
     )
     description = models.TextField("Описание / требования", blank=True)
+    is_archived = models.BooleanField(
+        "В архиве", default=False,
+        help_text="Автоматически архивируется при переводе сделки в статус «Оплачено»",
+    )
     created_at = models.DateTimeField("Создано", auto_now_add=True)
 
     class Meta:

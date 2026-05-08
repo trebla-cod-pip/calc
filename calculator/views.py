@@ -275,6 +275,7 @@ def requirements_list(request: HttpRequest) -> HttpResponse:
     """
     GET  — список потребностей + форма добавления.
     POST — HTMX-добавление новой потребности.
+    GET  ?archived=1 — показать архивные.
     """
     if request.method == "POST":
         form = RequirementForm(request.POST)
@@ -291,11 +292,27 @@ def requirements_list(request: HttpRequest) -> HttpResponse:
     else:
         form = RequirementForm()
 
-    requirements = Requirement.objects.prefetch_related("offers").all()
+    show_archived = request.GET.get("archived") == "1"
+    requirements = (
+        Requirement.objects.prefetch_related("offers")
+        .filter(is_archived=show_archived)
+    )
+    archived_count = Requirement.objects.filter(is_archived=True).count()
     return render(request, "calculator/requirements.html", {
         "form": form,
         "requirements": requirements,
+        "show_archived": show_archived,
+        "archived_count": archived_count,
     })
+
+
+@require_http_methods(["POST"])
+def requirement_unarchive(request: HttpRequest, pk: int) -> HttpResponse:
+    """HTMX: восстановить потребность из архива."""
+    req = get_object_or_404(Requirement, pk=pk)
+    req.is_archived = False
+    req.save(update_fields=["is_archived"])
+    return render(request, "calculator/partials/requirement_row.html", {"req": req})
 
 
 @require_http_methods(["POST"])
@@ -552,7 +569,9 @@ def deal_detail(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == "POST":
         form = DealForm(request.POST, instance=deal)
         if form.is_valid():
-            form.save()
+            saved = form.save()
+            if saved.status == Deal.STATUS_PAID:
+                _archive_deal_requirements(saved)
             messages.success(request, "Сделка обновлена.")
             return redirect("calculator:deal_detail", pk=deal.pk)
     else:
@@ -563,6 +582,13 @@ def deal_detail(request: HttpRequest, pk: int) -> HttpResponse:
     })
 
 
+def _archive_deal_requirements(deal: Deal) -> None:
+    """Архивирует все потребности из поставки сделки."""
+    if deal.delivery:
+        req_ids = deal.delivery.items.values_list("requirement_id", flat=True)
+        Requirement.objects.filter(pk__in=req_ids).update(is_archived=True)
+
+
 @require_http_methods(["POST"])
 def deal_update_status(request: HttpRequest, pk: int) -> HttpResponse:
     """HTMX: быстрое изменение статуса сделки."""
@@ -571,6 +597,8 @@ def deal_update_status(request: HttpRequest, pk: int) -> HttpResponse:
     if new_status in dict(Deal.STATUS_CHOICES):
         deal.status = new_status
         deal.save(update_fields=["status"])
+        if new_status == Deal.STATUS_PAID:
+            _archive_deal_requirements(deal)
     return render(request, "calculator/deals/partials/status_badge.html", {"deal": deal})
 
 

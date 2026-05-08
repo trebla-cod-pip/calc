@@ -18,6 +18,7 @@ urlpatterns = [
     # Потребности
     path("requirements/", views.requirements_list, name="requirements"),
     path("requirements/<int:pk>/delete/", views.requirement_delete, name="requirement_delete"),
+    path("requirements/<int:pk>/unarchive/", views.requirement_unarchive, name="requirement_unarchive"),
 
     # КП поставщиков
     path("offers/", views.offers_list, name="offers_list"),

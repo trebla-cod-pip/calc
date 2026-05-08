@@ -1,5 +1,5 @@
 {% load humanize %}
-<tr id="req-row-{{ req.pk }}" class="hover:bg-gray-50 transition-colors">
+<tr id="req-row-{{ req.pk }}" class="hover:bg-gray-50 transition-colors{% if req.is_archived %} opacity-60{% endif %}">
   <td class="px-4 py-3 w-8">
     <input type="checkbox" class="req-checkbox form-checkbox" value="{{ req.pk }}">
   </td>
@@ -58,6 +58,17 @@
                 text-blue-700 text-xs font-medium transition">
         📊
       </a>
+      {% endif %}
+      <!-- Восстановить из архива / архивировать вручную -->
+      {% if req.is_archived %}
+      <button hx-post="{% url 'calculator:requirement_unarchive' req.pk %}"
+              hx-target="#req-row-{{ req.pk }}"
+              hx-swap="outerHTML"
+              title="Восстановить из архива"
+              class="inline-flex items-center justify-center px-2.5 py-1 rounded-lg
+                     bg-green-50 hover:bg-green-100 text-green-700 text-xs font-medium transition">
+        ↩ Восстановить
+      </button>
       {% endif %}
       <!-- Удалить -->
       <button hx-post="{% url 'calculator:requirement_delete' req.pk %}"

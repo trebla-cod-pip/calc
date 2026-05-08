@@ -44,7 +44,6 @@
 
 <!-- Фильтр периода -->
 <div style="display:flex;gap:6px;margin-bottom:20px">
-  {% for val, label in "all:За всё время,month:Этот месяц,quarter:Квартал,year:Этот год"|slice:":4" %}{% endfor %}
   <a href="?period=all"     class="period-tab {% if period == 'all' %}active{% endif %}">За всё время</a>
   <a href="?period=month"   class="period-tab {% if period == 'month' %}active{% endif %}">Этот месяц</a>
   <a href="?period=quarter" class="period-tab {% if period == 'quarter' %}active{% endif %}">Квартал</a>
