@@ -217,9 +217,9 @@
     const bank = {{ agg.total_bank|default:0|unlocalize }};
     const ins  = {{ agg.total_insurance|default:0|unlocalize }};
     const oth  = {{ agg.total_other|default:0|unlocalize }};
-    Chart.register(ChartDataLabels);
     new Chart(pieCtx, {
       type: 'doughnut',
+      plugins: [ChartDataLabels],
       data: {
         labels: ['Себестоимость','Налог','Банк','Взносы','Прочее'],
         datasets: [{ data:[cost,tax,bank,ins,oth], backgroundColor:['#2563eb','#f59e0b','#10b981','#6366f1','#9b9b9b'], borderWidth:0, hoverOffset:6 }]
