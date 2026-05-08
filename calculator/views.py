@@ -208,6 +208,25 @@ def calculate(request: HttpRequest) -> HttpResponse:
 # КП поставщиков (единая страница)
 # ─────────────────────────────────────────────────────
 
+def _build_offers_context() -> dict:
+    """Возвращает плоский список КП + set pk лучших предложений."""
+    from calculator.models import SupplierOffer as _SO
+    requirements = Requirement.objects.prefetch_related("offers").filter(is_archived=False)
+    all_offers = _SO.objects.select_related("requirement").order_by(
+        "requirement__name", "price_per_unit"
+    )
+    best_pks: set = set()
+    for req in requirements:
+        best = req.best_offer
+        if best:
+            best_pks.add(best.pk)
+    return {
+        "requirements": requirements,
+        "all_offers": all_offers,
+        "best_pks": best_pks,
+    }
+
+
 def offers_list(request: HttpRequest) -> HttpResponse:
     """
     Страница всех КП поставщиков.
@@ -221,10 +240,8 @@ def offers_list(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             form.save()
             if request.headers.get("HX-Request"):
-                requirements = Requirement.objects.prefetch_related("offers").all()
-                return render(request, "calculator/partials/all_offers.html", {
-                    "requirements": requirements,
-                })
+                return render(request, "calculator/partials/all_offers.html",
+                              _build_offers_context())
             return redirect("calculator:offers_list")
         if request.headers.get("HX-Request"):
             resp = render(request, "calculator/partials/req_form_errors.html",
@@ -239,12 +256,9 @@ def offers_list(request: HttpRequest) -> HttpResponse:
         initial = {"requirement": selected_req} if selected_req else {}
         form = SupplierOfferForm(initial=initial)
 
-    requirements = Requirement.objects.prefetch_related("offers").all()
-    return render(request, "calculator/offers.html", {
-        "form": form,
-        "requirements": requirements,
-        "selected_req": selected_req,
-    })
+    ctx = _build_offers_context()
+    ctx.update({"form": form, "selected_req": selected_req})
+    return render(request, "calculator/offers.html", ctx)
 
 
 # ─────────────────────────────────────────────────────
@@ -343,10 +357,8 @@ def offer_edit(request: HttpRequest, pk: int) -> HttpResponse:
         form = SupplierOfferEditForm(request.POST, instance=offer)
         if form.is_valid():
             form.save()
-            requirements = Requirement.objects.prefetch_related("offers").all()
-            return render(request, "calculator/partials/all_offers.html", {
-                "requirements": requirements,
-            })
+            return render(request, "calculator/partials/all_offers.html",
+                          _build_offers_context())
         # Ошибки — возвращаем форму редактирования с ошибками обратно в ту же строку
         return render(request, "calculator/partials/offer_edit_row.html", {
             "offer": offer,
@@ -773,7 +785,5 @@ def supplier_offer_delete(request: HttpRequest, pk: int) -> HttpResponse:
     """HTMX-удаление КП поставщика."""
     offer = get_object_or_404(SupplierOffer, pk=pk)
     offer.delete()
-    requirements = Requirement.objects.prefetch_related("offers").all()
-    return render(request, "calculator/partials/all_offers.html", {
-        "requirements": requirements,
-    })
+    return render(request, "calculator/partials/all_offers.html",
+                  _build_offers_context())
