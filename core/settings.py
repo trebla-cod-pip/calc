@@ -13,10 +13,16 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
-# В DEBUG-режиме разрешаем любой HTTP-хост (нужно при доступе по IP).
-# В .env можно переопределить на конкретные адреса.
-_csrf_default = 'http://*,https://*' if DEBUG else 'http://localhost:1298'
-CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default=_csrf_default, cast=Csv())
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default=(
+        'http://localhost:1298,'
+        'http://127.0.0.1:1298,'
+        'http://31.169.126.140:1298,'
+        'http://l998.ru:1298'
+    ),
+    cast=Csv(),
+)
 
 # Явно отключаем secure-флаги: без HTTPS браузер не шлёт cookie с Secure=True.
 CSRF_COOKIE_SECURE    = config('CSRF_COOKIE_SECURE',    default=False, cast=bool)
