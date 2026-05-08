@@ -244,13 +244,37 @@
         total += r.value;
         let extra = '';
         if (key === 'tax' && r.gross_tax > 0) {
-          const sys   = TAX_LABELS[r.tax_system] || r.tax_system || '';
-          const ded   = r.tax_deduction > 0 ? r.tax_deduction : 0;
-          extra = `<div style="font-size:11px;color:var(--text-3);margin-top:3px;line-height:1.6">
-            ${sys ? sys + ': ' : ''}выручка ${fmt(r.revenue)}<br>
-            начислено: <b>${fmt(r.gross_tax)}</b>
-            ${ded > 0 ? `&minus; вычет взносов: <b style="color:var(--good)">${fmt(ded)}</b>` : ''}
-            &nbsp;=&nbsp;к уплате: <b>${fmt(r.value)}</b>
+          const sys = TAX_LABELS[r.tax_system] || r.tax_system || '';
+          const ded = r.tax_deduction > 0 ? r.tax_deduction : 0;
+          const sysTag = sys
+            ? `<span style="display:inline-block;padding:1px 6px;border-radius:4px;background:var(--primary-soft);color:var(--primary);font-size:10px;font-weight:600;margin-bottom:6px">${sys}</span><br>`
+            : '';
+          const revLine = `<div style="font-size:11px;color:var(--text-3);margin-bottom:5px">выручка: <b>${fmt(r.revenue)}</b></div>`;
+          let formula;
+          if (ded > 0) {
+            formula = `
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
+                <span style="color:var(--text-3);font-size:10px;font-family:inherit">начислено</span>
+                <span style="font-weight:700;color:var(--text)">${fmt(r.gross_tax)}</span>
+                <span style="color:var(--text-3);font-size:13px;font-weight:300">−</span>
+                <span style="color:var(--text-3);font-size:10px;font-family:inherit">вычет взносов</span>
+                <span style="font-weight:700;color:var(--good)">${fmt(ded)}</span>
+                <span style="color:var(--text-3);font-size:13px;font-weight:300">=</span>
+                <span style="color:var(--text-3);font-size:10px;font-family:inherit">к уплате</span>
+                <span style="font-weight:700;color:var(--text)">${fmt(r.value)}</span>
+              </div>`;
+          } else {
+            formula = `
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">
+                <span style="color:var(--text-3);font-size:10px;font-family:inherit">начислено</span>
+                <span style="font-weight:700;color:var(--text)">${fmt(r.gross_tax)}</span>
+                <span style="color:var(--text-3);font-size:13px;font-weight:300">=</span>
+                <span style="color:var(--text-3);font-size:10px;font-family:inherit">к уплате</span>
+                <span style="font-weight:700;color:var(--text)">${fmt(r.value)}</span>
+              </div>`;
+          }
+          extra = `<div style="margin-top:5px;padding:8px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border)">
+            ${sysTag}${revLine}${formula}
           </div>`;
         }
         html += `<div class="modal-row" style="align-items:start">
@@ -265,6 +289,38 @@
         <span>Итого</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">${fmt(total)}</span>
       </div>`;
+
+      // Блок пула вычета взносов — только для налога
+      if (key === 'tax' && data.pool) {
+        const pool = data.pool;
+        const usedPct = pool.annual > 0 ? Math.min(100, Math.round(pool.used / pool.annual * 100)) : 0;
+        const remainColor = pool.remaining <= 0 ? 'var(--danger)' : pool.remaining < pool.annual * 0.2 ? 'var(--warn)' : 'var(--good)';
+        html += `<div style="margin-top:14px;padding:14px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">
+            🛡️ Пул вычета страховых взносов ${pool.year}
+            ${pool.ts_year && pool.ts_year !== pool.year ? `<span style="font-weight:400;color:var(--warn)">(настройки за ${pool.ts_year})</span>` : ''}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+            <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Лимит за год</div>
+              <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--text)">${fmt(pool.annual)}</div>
+            </div>
+            <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Использовано</div>
+              <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--warn)">${fmt(pool.used)}</div>
+            </div>
+            <div style="text-align:center;padding:8px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px">Остаток</div>
+              <div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${remainColor}">${fmt(pool.remaining)}</div>
+            </div>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:999px;overflow:hidden">
+            <div style="height:100%;width:${usedPct}%;background:${usedPct >= 100 ? 'var(--danger)' : usedPct >= 80 ? 'var(--warn)' : 'var(--primary)'};border-radius:999px;transition:width .3s"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:5px;text-align:right">${usedPct}% использовано</div>
+        </div>`;
+      }
+
       document.getElementById('modal-body').innerHTML = html;
     }
     document.getElementById('modal-overlay').classList.add('open');

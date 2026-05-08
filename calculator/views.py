@@ -684,6 +684,21 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
         for row in monthly_raw
     ], ensure_ascii=False)
 
+    # Пул страхового вычета за текущий год
+    from datetime import date as _date
+    ts = TaxSettings.objects.order_by("-year").first()
+    annual_pool = float(ts.fixed_insurance_annual) if ts else 0.0
+    current_year = _date.today().year
+
+    # Сумма всех вычетов, использованных в сделках за текущий год
+    deduction_used = sum(
+        max(0.0, float((d.gross_tax or 0) - (d.tax_amount or 0)))
+        for d in Deal.objects.exclude(status=Deal.STATUS_CANCELLED)
+                              .filter(created_at__year=current_year)
+        if (d.gross_tax or 0) > 0
+    )
+    deduction_remaining = annual_pool - deduction_used
+
     # Разбивка по сделкам для попапа — {field: [{title, pk, value}]}
     breakdown_fields = {
         "cost":      ("cost_price",       "Себестоимость"),
@@ -700,15 +715,23 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
             val = getattr(d, field) or Decimal("0")
             if val:
                 row = {"title": d.title, "pk": d.pk, "value": float(val)}
-                # Для налога добавляем расшифровку
                 if key == "tax":
-                    row["tax_system"]   = d.tax_system
-                    row["gross_tax"]    = float(d.gross_tax or 0)
-                    row["insurance"]    = float(d.insurance_amount or 0)
-                    row["revenue"]      = float(d.revenue or 0)
-                    row["tax_deduction"]= float((d.gross_tax or 0) - (d.tax_amount or 0))
+                    row["tax_system"]    = d.tax_system
+                    row["gross_tax"]     = float(d.gross_tax or 0)
+                    row["revenue"]       = float(d.revenue or 0)
+                    row["tax_deduction"] = max(0.0, float((d.gross_tax or 0) - (d.tax_amount or 0)))
                 rows.append(row)
-        breakdown[key] = {"label": label, "rows": rows}
+        entry = {"label": label, "rows": rows}
+        # Для налога — добавляем сводку по годовому пулу вычетов
+        if key == "tax":
+            entry["pool"] = {
+                "annual":    annual_pool,
+                "used":      round(deduction_used, 2),
+                "remaining": round(deduction_remaining, 2),
+                "year":      current_year,
+                "ts_year":   ts.year if ts else current_year,
+            }
+        breakdown[key] = entry
 
     breakdown_json = json.dumps(breakdown, ensure_ascii=False)
 
