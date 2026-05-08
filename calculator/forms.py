@@ -395,6 +395,14 @@ class DealForm(forms.ModelForm):
         }),
     )
 
+    # Технические поля — не обязательны, передаются скрыто
+    gross_tax = forms.DecimalField(
+        label="Начисленный налог (до вычета), ₽",
+        required=False,
+        min_value=0,
+        widget=forms.HiddenInput(),
+    )
+
     class Meta:
         model = Deal
         fields = [

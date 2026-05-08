@@ -152,6 +152,10 @@
     </div>
   </div>
 
+  {# Скрытые технические поля — передают gross_tax и tax_system из калькулятора #}
+  {{ form.gross_tax }}
+  {{ form.tax_system }}
+
   <div style="display:flex;gap:10px">
     <button type="submit" class="btn-primary" style="height:42px;padding:0 24px;font-size:14px;font-weight:600">
       {% if deal %}Сохранить изменения{% else %}💾 Сохранить сделку{% endif %}
