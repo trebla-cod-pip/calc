@@ -266,7 +266,8 @@
         <button type="submit" class="btn-primary" style="height:42px;font-size:14px;font-weight:600">
           Рассчитать →
         </button>
-        <a href="{% url 'calculator:deal_save_from_delivery' delivery.pk %}"
+        <a id="save-deal-btn"
+           href="{% url 'calculator:deal_save_from_delivery' delivery.pk %}"
            style="display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 18px;
                   border-radius:var(--r);border:1px solid var(--border-strong);
                   background:var(--surface);color:var(--text);font-size:13px;font-weight:600;
@@ -336,6 +337,24 @@
   }
   document.querySelectorAll('[name^=expense_]').forEach(el => el.addEventListener('input', updateExpenseTotal));
   updateExpenseTotal();
+
+  // После каждого HTMX-ответа — подхватываем данные из result и вшиваем в ссылку
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    if (e.detail.target.id !== 'result-area') return;
+    const root = document.getElementById('charts-root');
+    if (!root) return;
+    const base = '{% url "calculator:deal_save_from_delivery" delivery.pk %}';
+    const p = new URLSearchParams({
+      sale:      root.dataset.sale      || '',
+      cost:      root.dataset.purchase  || '',
+      tax:       root.dataset.tax       || '',
+      bank:      root.dataset.bank      || '',
+      insurance: root.dataset.insurance || '',
+      other:     root.dataset.other     || '',
+      profit:    root.dataset.profit    || '',
+    });
+    document.getElementById('save-deal-btn').href = base + '?' + p.toString();
+  });
 
   document.querySelectorAll('#calc-form input, #calc-form select').forEach(el => {
     el.addEventListener('change', () => {

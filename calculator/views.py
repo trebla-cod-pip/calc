@@ -495,14 +495,26 @@ def deal_save_from_delivery(request: HttpRequest, pk: int) -> HttpResponse:
         })
 
     # GET — показываем форму с предзаполненными данными из калькулятора
-    initial = {
-        "title": delivery.name,
-        "cost_price": delivery.total_purchase,
-        "status": Deal.STATUS_DRAFT,
-    }
+    def _q(name):
+        """Безопасно читает числовой GET-параметр."""
+        try:
+            return Decimal(request.GET.get(name, "").strip()) if request.GET.get(name) else None
+        except Exception:
+            return None
+
     if deal:
         form = DealForm(instance=deal)
     else:
+        initial = {
+            "title": delivery.name,
+            "cost_price":       _q("cost")      or delivery.total_purchase,
+            "revenue":          _q("sale")      or Decimal("0"),
+            "tax_amount":       _q("tax")       or Decimal("0"),
+            "bank_commission":  _q("bank")      or Decimal("0"),
+            "insurance_amount": _q("insurance") or Decimal("0"),
+            "other_expenses":   _q("other")     or Decimal("0"),
+            "status": Deal.STATUS_DRAFT,
+        }
         form = DealForm(initial=initial)
     return render(request, "calculator/deal_form.html", {
         "form": form,
