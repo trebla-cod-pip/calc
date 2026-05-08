@@ -343,15 +343,17 @@
     if (e.detail.target.id !== 'result-area') return;
     const root = document.getElementById('charts-root');
     if (!root) return;
+    // data-* атрибуты могут содержать запятую (русская локаль) — нормализуем в точку
+    function toNum(str) { return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0; }
     const base = '{% url "calculator:deal_save_from_delivery" delivery.pk %}';
     const p = new URLSearchParams({
-      sale:      root.dataset.sale      || '',
-      cost:      root.dataset.purchase  || '',
-      tax:       root.dataset.tax       || '',
-      bank:      root.dataset.bank      || '',
-      insurance: root.dataset.insurance || '',
-      other:     root.dataset.other     || '',
-      profit:    root.dataset.profit    || '',
+      sale:      toNum(root.dataset.sale),
+      cost:      toNum(root.dataset.purchase),
+      tax:       toNum(root.dataset.tax),
+      bank:      toNum(root.dataset.bank),
+      insurance: toNum(root.dataset.insurance),
+      other:     toNum(root.dataset.other),
+      profit:    toNum(root.dataset.profit),
     });
     document.getElementById('save-deal-btn').href = base + '?' + p.toString();
   });

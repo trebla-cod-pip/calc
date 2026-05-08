@@ -496,9 +496,10 @@ def deal_save_from_delivery(request: HttpRequest, pk: int) -> HttpResponse:
 
     # GET — показываем форму с предзаполненными данными из калькулятора
     def _q(name):
-        """Безопасно читает числовой GET-параметр."""
+        """Безопасно читает числовой GET-параметр, поддерживает запятую и точку."""
         try:
-            return Decimal(request.GET.get(name, "").strip()) if request.GET.get(name) else None
+            raw = request.GET.get(name, "").strip().replace(" ", "").replace(",", ".")
+            return Decimal(raw) if raw else None
         except Exception:
             return None
 
