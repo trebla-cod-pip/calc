@@ -716,13 +716,25 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
     annual_pool = float(ts.fixed_insurance_annual) if ts else 0.0
     current_year = _date.today().year
 
-    # Реально использованный вычет = сумма (gross_tax − tax_amount) по сделкам года
-    deduction_used = sum(
-        max(0.0, float((d.gross_tax or 0) - (d.tax_amount or 0)))
-        for d in Deal.objects.exclude(status=Deal.STATUS_CANCELLED)
-                              .filter(created_at__year=current_year)
+    # Сделки года для расчёта пула (используем active_qs за текущий год)
+    year_deals = list(
+        Deal.objects.exclude(status=Deal.STATUS_CANCELLED)
+                    .filter(created_at__year=current_year)
     )
-    deduction_remaining = max(0.0, annual_pool - deduction_used)
+
+    # Пул уменьшается на gross_tax каждой сделки (полный вычет пока хватает)
+    pool_depleted = sum(float(d.gross_tax or d.tax_amount or 0) for d in year_deals)
+
+    # Налоговый резерв — накопленные «к уплате» из пропорциональной модели
+    # (деньги, которые следует физически отложить)
+    tax_reserve = sum(float(d.tax_amount or 0) for d in year_deals)
+
+    # Реальный налог к уплате = max(0, gross_tax сверх пула)
+    actual_tax_due = max(0.0, pool_depleted - annual_pool)
+
+    pool_used      = min(pool_depleted, annual_pool)
+    pool_remaining = max(0.0, annual_pool - pool_depleted)
+    pool_exhausted = pool_depleted >= annual_pool
 
     # Разбивка по сделкам для попапа — {field: [{title, pk, value}]}
     breakdown_fields = {
@@ -750,11 +762,15 @@ def deal_analytics(request: HttpRequest) -> HttpResponse:
         # Для налога — добавляем сводку по годовому пулу вычетов
         if key == "tax":
             entry["pool"] = {
-                "annual":    annual_pool,
-                "used":      round(deduction_used, 2),
-                "remaining": round(deduction_remaining, 2),
-                "year":      current_year,
-                "ts_year":   ts.year if ts else current_year,
+                "annual":      annual_pool,
+                "used":        round(pool_used, 2),
+                "remaining":   round(pool_remaining, 2),
+                "depleted":    round(pool_depleted, 2),
+                "exhausted":   pool_exhausted,
+                "tax_reserve": round(tax_reserve, 2),
+                "actual_due":  round(actual_tax_due, 2),
+                "year":        current_year,
+                "ts_year":     ts.year if ts else current_year,
             }
         breakdown[key] = entry
 
